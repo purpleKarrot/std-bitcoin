@@ -202,6 +202,7 @@ namespace bitcoin {
   struct txid;
   struct wtxid;
   struct block_hash;
+  class parse_error;
   class amount;
   class script;
   class outpoint;
@@ -316,6 +317,27 @@ namespace bitcoin {
 
 } // namespace bitcoin
 ```
+
+______________________________________________________________________
+
+### [bitcoin.parse_error] Class `parse_error`
+
+#### [bitcoin.parse_error.syn] Synopsis
+
+```cpp
+namespace bitcoin {
+
+  class parse_error : public std::runtime_error {
+  public:
+    using std::runtime_error::runtime_error;
+  };
+
+} // namespace bitcoin
+```
+
+`parse_error` is thrown by the deserializing constructors of `transaction`
+([bitcoin.transaction.cons]) and `block` ([bitcoin.block.cons]) when `raw`
+does not contain a valid, complete wire-format encoding.
 
 ______________________________________________________________________
 
@@ -631,7 +653,8 @@ ______________________________________________________________________
 
 `input_view` and `output_view` each satisfy the *value-range*<T> named
 requirement for their respective element types. Objects of type `transaction`
-are default-constructible; all other construction is implementation-defined.
+may be default-constructed or deserialized from raw bytes
+([bitcoin.transaction.cons]). All other construction is implementation-defined.
 
 #### [bitcoin.transaction.syn] Synopsis
 
@@ -644,6 +667,7 @@ namespace bitcoin {
     using output_view = /* see [bitcoin.transaction.overview] */;
 
     transaction() noexcept;
+    explicit transaction(std::span<const std::byte> raw);
 
     [[nodiscard]] bitcoin::txid  id()         const noexcept;
     [[nodiscard]] bitcoin::wtxid witness_id() const noexcept;
@@ -657,6 +681,29 @@ namespace bitcoin {
 
 } // namespace bitcoin
 ```
+
+#### [bitcoin.transaction.cons] Constructors
+
+```cpp
+transaction() noexcept;
+```
+
+*Postconditions:* `inputs().empty()` and `outputs().empty()`.
+
+```cpp
+explicit transaction(std::span<const std::byte> raw);
+```
+
+*Effects:* Initializes `*this` by deserializing the Bitcoin wire-format
+encoding in `raw`. Both the legacy format and the segwit extended format
+(BIP-141/BIP-144) are accepted.
+
+*Throws:* `bitcoin::parse_error` if `raw` does not contain a valid, complete
+wire-format encoding of exactly one transaction. In particular, `parse_error`
+is thrown if `raw` is truncated or if `raw` contains trailing bytes beyond the
+encoding.
+
+______________________________________________________________________
 
 #### [bitcoin.transaction.obs] Observers
 
@@ -734,8 +781,9 @@ ______________________________________________________________________
 #### [bitcoin.block.overview]
 
 `transaction_view` satisfies the *value-range*<`bitcoin::transaction`> named
-requirement. Objects of type `block` are default-constructible; all other
-construction is implementation-defined.
+requirement. Objects of type `block` may be default-constructed or deserialized
+from raw bytes ([bitcoin.block.cons]). All other construction is
+implementation-defined.
 
 #### [bitcoin.block.syn] Synopsis
 
@@ -747,6 +795,7 @@ namespace bitcoin {
     using transaction_view = /* see [bitcoin.block.overview] */;
 
     block() noexcept;
+    explicit block(std::span<const std::byte> raw);
 
     [[nodiscard]] bitcoin::block_hash          hash()         const noexcept;
     [[nodiscard]] const bitcoin::block_header& header()       const noexcept;
@@ -757,6 +806,30 @@ namespace bitcoin {
 
 } // namespace bitcoin
 ```
+
+#### [bitcoin.block.cons] Constructors
+
+```cpp
+block() noexcept;
+```
+
+*Postconditions:* `transactions().empty()`.
+
+```cpp
+explicit block(std::span<const std::byte> raw);
+```
+
+*Effects:* Initializes `*this` by deserializing the Bitcoin wire-format
+encoding in `raw`. The format is an 80-byte block header followed by a
+variable-length integer encoding the transaction count, followed by the
+serialized transactions in order.
+
+*Throws:* `bitcoin::parse_error` if `raw` does not contain a valid, complete
+wire-format encoding of exactly one block. In particular, `parse_error` is
+thrown if `raw` is truncated or if `raw` contains trailing bytes beyond the
+encoding.
+
+______________________________________________________________________
 
 #### [bitcoin.block.obs] Observers
 
