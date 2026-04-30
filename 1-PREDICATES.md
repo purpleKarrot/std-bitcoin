@@ -159,7 +159,7 @@ ______________________________________________________________________
 [[nodiscard]] bool is_coinbase(const outpoint& o) noexcept;
 ```
 
-*Returns:* `is_coinbase(o.id())`.
+*Returns:* `is_coinbase(o.txid())`.
 
 ______________________________________________________________________
 

@@ -200,6 +200,7 @@ namespace bitcoin {
 
   struct hash256;
   struct txid;
+  struct wtxid;
   struct block_hash;
   class amount;
   class script;
@@ -276,6 +277,25 @@ the SHA256d of its witness-stripped serialization.
 namespace bitcoin {
 
   struct txid : bitcoin::hash256 {};
+
+} // namespace bitcoin
+```
+
+______________________________________________________________________
+
+### [bitcoin.wtxid] Class `wtxid`
+
+`wtxid` is a `struct` deriving from `hash256`. It is the SHA256d of the full
+transaction serialization including witness data, as defined by BIP-141. A
+`wtxid` and the `txid` of the same transaction are equal only for transactions
+that carry no witness data.
+
+#### [bitcoin.wtxid.syn] Synopsis
+
+```cpp
+namespace bitcoin {
+
+  struct wtxid : bitcoin::hash256 {};
 
 } // namespace bitcoin
 ```
@@ -506,8 +526,8 @@ namespace bitcoin {
 
   class outpoint {
   public:
-    [[nodiscard]] const bitcoin::txid& id()    const noexcept;
-    [[nodiscard]] std::size_t          index() const noexcept;
+    [[nodiscard]] bitcoin::txid txid()  const noexcept;
+    [[nodiscard]] std::size_t   index() const noexcept;
 
     friend bool                 operator==(const outpoint& lhs, const outpoint& rhs) noexcept;
     friend std::strong_ordering operator<=>(const outpoint& lhs, const outpoint& rhs) noexcept;
@@ -519,11 +539,12 @@ namespace bitcoin {
 #### [bitcoin.outpoint.obs] Observers
 
 ```cpp
-[[nodiscard]] const bitcoin::txid& id()          const noexcept;
-[[nodiscard]] std::size_t          index()       const noexcept;
+[[nodiscard]] bitcoin::txid txid()  const noexcept;
+[[nodiscard]] std::size_t   index() const noexcept;
 ```
 
-*Returns:* The stored transaction identifier and output index, respectively.
+*Returns:* The `txid` of the transaction containing the referenced output, and
+the output index within that transaction, respectively.
 
 ______________________________________________________________________
 
@@ -624,10 +645,12 @@ namespace bitcoin {
 
     transaction() noexcept;
 
-    [[nodiscard]] std::int32_t  version()  const noexcept;
-    [[nodiscard]] std::uint32_t locktime() const noexcept;
-    [[nodiscard]] input_view    inputs()   const noexcept;
-    [[nodiscard]] output_view   outputs()  const noexcept;
+    [[nodiscard]] bitcoin::txid  id()         const noexcept;
+    [[nodiscard]] bitcoin::wtxid witness_id() const noexcept;
+    [[nodiscard]] std::int32_t   version()    const noexcept;
+    [[nodiscard]] std::uint32_t  locktime()   const noexcept;
+    [[nodiscard]] input_view     inputs()     const noexcept;
+    [[nodiscard]] output_view    outputs()    const noexcept;
 
     friend bool operator==(const transaction& lhs, const transaction& rhs) noexcept;
   };
@@ -638,6 +661,18 @@ namespace bitcoin {
 #### [bitcoin.transaction.obs] Observers
 
 ```cpp
+[[nodiscard]] bitcoin::txid  id()         const noexcept;
+[[nodiscard]] bitcoin::wtxid witness_id() const noexcept;
+```
+
+*Returns:* The SHA256d hash of the witness-stripped serialization and of the
+full serialization including witness data, respectively.
+
+*Remarks:* For a transaction with no witness data, `witness_id() == id()`
+when both are compared as `bitcoin::hash256` values. The return types remain
+distinct regardless.
+
+```cpp
 [[nodiscard]] std::int32_t  version()  const noexcept;
 [[nodiscard]] std::uint32_t locktime() const noexcept;
 ```
@@ -645,11 +680,11 @@ namespace bitcoin {
 *Returns:* The transaction version and locktime fields, respectively.
 
 ```cpp
-[[nodiscard]] input_view   inputs()    const noexcept;
-[[nodiscard]] output_view  outputs()   const noexcept;
+[[nodiscard]] input_view  inputs()  const noexcept;
+[[nodiscard]] output_view outputs() const noexcept;
 ```
 
-*Returns:* Views of the stored inputs and outputs, respectively.
+*Returns:* Views of the inputs and outputs, respectively.
 
 ______________________________________________________________________
 
@@ -662,12 +697,13 @@ namespace bitcoin {
 
   class block_header {
   public:
-    [[nodiscard]] std::int32_t               version()         const noexcept;
-    [[nodiscard]] const bitcoin::block_hash& prev_block_hash() const noexcept;
-    [[nodiscard]] const bitcoin::hash256&    merkle_root()     const noexcept;
-    [[nodiscard]] std::chrono::sys_seconds   time()            const noexcept;
-    [[nodiscard]] std::uint32_t              bits()            const noexcept;
-    [[nodiscard]] std::uint32_t              nonce()           const noexcept;
+    [[nodiscard]] bitcoin::block_hash      hash()            const noexcept;
+    [[nodiscard]] std::int32_t             version()         const noexcept;
+    [[nodiscard]] bitcoin::block_hash      prev_block_hash() const noexcept;
+    [[nodiscard]] bitcoin::hash256         merkle_root()     const noexcept;
+    [[nodiscard]] std::chrono::sys_seconds time()            const noexcept;
+    [[nodiscard]] std::uint32_t            bits()            const noexcept;
+    [[nodiscard]] std::uint32_t            nonce()           const noexcept;
 
     friend bool operator==(const block_header& lhs, const block_header& rhs) noexcept;
   };
@@ -678,15 +714,18 @@ namespace bitcoin {
 #### [bitcoin.block_header.obs] Observers
 
 ```cpp
-[[nodiscard]] std::int32_t               version()         const noexcept;
-[[nodiscard]] const bitcoin::block_hash& prev_block_hash() const noexcept;
-[[nodiscard]] const bitcoin::hash256&    merkle_root()     const noexcept;
-[[nodiscard]] std::chrono::sys_seconds   time()            const noexcept;
-[[nodiscard]] std::uint32_t              bits()            const noexcept;
-[[nodiscard]] std::uint32_t              nonce()           const noexcept;
+[[nodiscard]] bitcoin::block_hash      hash()            const noexcept;
+[[nodiscard]] std::int32_t             version()         const noexcept;
+[[nodiscard]] bitcoin::block_hash      prev_block_hash() const noexcept;
+[[nodiscard]] bitcoin::hash256         merkle_root()     const noexcept;
+[[nodiscard]] std::chrono::sys_seconds time()            const noexcept;
+[[nodiscard]] std::uint32_t            bits()            const noexcept;
+[[nodiscard]] std::uint32_t            nonce()           const noexcept;
 ```
 
-*Returns:* The corresponding stored field.
+*Returns:* `hash()` returns the SHA256d hash of the 80-byte serialized block
+header. The remaining observers return the values of their respective header
+fields.
 
 ______________________________________________________________________
 
@@ -709,6 +748,7 @@ namespace bitcoin {
 
     block() noexcept;
 
+    [[nodiscard]] bitcoin::block_hash          hash()         const noexcept;
     [[nodiscard]] const bitcoin::block_header& header()       const noexcept;
     [[nodiscard]] transaction_view             transactions() const noexcept;
 
@@ -721,16 +761,22 @@ namespace bitcoin {
 #### [bitcoin.block.obs] Observers
 
 ```cpp
-[[nodiscard]] const bitcoin::block_header& header()       const noexcept;
+[[nodiscard]] bitcoin::block_hash hash() const noexcept;
 ```
 
-*Returns:* The stored block header.
+*Returns:* `header().hash()`.
+
+```cpp
+[[nodiscard]] const bitcoin::block_header& header() const noexcept;
+```
+
+*Returns:* The block header.
 
 ```cpp
 [[nodiscard]] transaction_view transactions() const noexcept;
 ```
 
-*Returns:* A view of the stored transactions. By convention,
+*Returns:* A view of the transactions. By convention,
 `transactions().front()` is the coinbase transaction when the block is non-empty.
 
 ______________________________________________________________________
