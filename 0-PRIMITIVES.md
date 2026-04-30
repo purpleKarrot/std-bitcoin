@@ -51,8 +51,7 @@ treatment for Bitcoin's core wire-protocol types.
 
 ### In scope
 
-- Cryptographic digest wrapper: `hash256`
-- Typed hash aliases: `txid`, `block_hash`
+- 32-byte hash types: `hash256`, `txid`, `wtxid`, `block_hash`
 - Monetary value: `amount`
 - Script byte container: `script`
 - Transaction structure: `outpoint`, `tx_input`, `tx_output`, `transaction`
@@ -84,9 +83,13 @@ ______________________________________________________________________
 
 ### D1 — Strong types over raw integers and byte arrays
 
-`txid` and `block_hash` are both 32-byte arrays, but they must not be
-implicitly interconvertible. A function accepting a `txid` must not silently
-accept a `block_hash`. This rules out `using txid = std::array<std::byte, 32>`.
+`txid`, `wtxid`, `block_hash`, and `hash256` are all 32-byte digest values, but
+they must not be implicitly interconvertible. A function accepting a `txid` must
+not silently accept a `block_hash` or a `wtxid`. This rules out aliasing them to
+the same underlying type (for example, `using txid = std::array<std::byte, 32>`).
+The proposal models these as distinct specializations of an exposition-only
+template `basic-hash-id<Tag>`, producing separate, non-interconvertible types
+with identical storage representation.
 
 ### D2 — Wire byte order internally; display byte order externally
 
@@ -198,10 +201,11 @@ ______________________________________________________________________
 ```cpp
 namespace bitcoin {
 
-  struct hash256;
-  struct txid;
-  struct wtxid;
-  struct block_hash;
+  template<class Tag> class basic-hash-id; // exposition only
+  using hash256    = basic-hash-id</* unspecified */>;
+  using txid       = basic-hash-id</* unspecified */>;
+  using wtxid      = basic-hash-id</* unspecified */>;
+  using block_hash = basic-hash-id</* unspecified */>;
   class parse_error;
   class amount;
   class script;
@@ -220,100 +224,158 @@ namespace bitcoin {
 
 } // namespace bitcoin
 
-template<> struct std::formatter<bitcoin::hash256>;
-template<> struct std::formatter<bitcoin::amount>;
+template<class Tag> struct std::formatter<bitcoin::basic-hash-id<Tag>>;
+template<>         struct std::formatter<bitcoin::amount>;
+
+template<class Tag> struct std::hash<bitcoin::basic-hash-id<Tag>>;
+template<>         struct std::hash<bitcoin::outpoint>;
 ```
 
 ______________________________________________________________________
 
-### [bitcoin.hash256] Class `hash256`
+### [bitcoin.hashid] Class template `basic-hash-id`
 
-#### [bitcoin.hash256.overview]
+#### [bitcoin.hashid.overview]
 
-`hash256` is an aggregate. It inherits the full interface of
-`std::array<std::byte, 32>`, including `operator==` and `operator<=>`
-(lexicographic over wire bytes). `txid` ([bitcoin.txid]) and `block_hash`
-([bitcoin.block_hash]) derive from `hash256`.
+`basic-hash-id` is an exposition-only class template. `hash256`
+([bitcoin.hash256]), `txid` ([bitcoin.txid]), `wtxid` ([bitcoin.wtxid]),
+and `block_hash` ([bitcoin.block_hash]) are distinct specializations with
+unspecified tag types. Specializations with different tag types are
+unrelated types; comparisons between them are ill-formed.
 
-Value-initialisation (`hash256{}`) produces an all-zero value.
+A default-constructed `basic-hash-id` holds all-zero bytes.
+
+#### [bitcoin.hashid.syn] Synopsis
+
+```cpp
+namespace bitcoin {
+
+  template<class Tag>
+  class basic-hash-id { // exposition only
+  public:
+    constexpr basic-hash-id() noexcept;
+    constexpr explicit basic-hash-id(std::span<const std::byte, 32> bytes) noexcept;
+
+    [[nodiscard]] constexpr explicit operator bool() const noexcept;
+
+    friend constexpr std::span<const std::byte, 32> as_bytes(const basic-hash-id&)                        noexcept;
+    friend constexpr bool                           operator==(const basic-hash-id&, const basic-hash-id&) noexcept = default;
+    friend constexpr std::strong_ordering           operator<=>(const basic-hash-id&, const basic-hash-id&) noexcept = default;
+
+  private:
+    std::array<std::byte, 32> value_; // exposition only
+  };
+
+} // namespace bitcoin
+
+template<class Tag> struct std::formatter<bitcoin::basic-hash-id<Tag>>;
+template<class Tag> struct std::hash<bitcoin::basic-hash-id<Tag>>;
+```
+
+#### [bitcoin.hashid.cons] Constructors
+
+```cpp
+constexpr basic-hash-id() noexcept;
+```
+
+*Postconditions:* `!*this` is `true`.
+
+```cpp
+constexpr explicit basic-hash-id(std::span<const std::byte, 32> bytes) noexcept;
+```
+
+*Effects:* Initializes the stored bytes by copying from `bytes`.
+
+#### [bitcoin.hashid.obs] Observers
+
+```cpp
+[[nodiscard]] constexpr explicit operator bool() const noexcept;
+```
+
+*Returns:* `false` if all stored bytes are `std::byte{0}`, and `true` otherwise.
+
+```cpp
+friend constexpr std::span<const std::byte, 32> as_bytes(const basic-hash-id& h) noexcept;
+```
+
+*Returns:* A read-only view of the 32 wire-order bytes of `h`.
+
+#### [bitcoin.hashid.fmt] Formatter
+
+`std::formatter<bitcoin::basic-hash-id<Tag>>` formats a value as 64 lowercase
+hexadecimal digits in display byte order (bytes reversed relative to wire
+order), as used by block explorers.
+
+#### [bitcoin.hashid.hash] Hash support
+
+`std::hash<bitcoin::basic-hash-id<Tag>>` is provided. The hash value is
+computed over the 32 wire-order bytes of the value.
+
+______________________________________________________________________
+
+### [bitcoin.hash256] Type `hash256`
+
+`hash256` is a general-purpose 32-byte hash value, used where no stronger
+domain type applies — for example, the merkle root in a block header
+([bitcoin.block_header]).
 
 #### [bitcoin.hash256.syn] Synopsis
 
 ```cpp
 namespace bitcoin {
 
-  struct hash256 : std::array<std::byte, 32> {
-    [[nodiscard]] bool is_null() const noexcept;
-  };
+  using hash256 = basic-hash-id</* unspecified */>;
 
 } // namespace bitcoin
-
-template<> struct std::formatter<bitcoin::hash256>;
 ```
-
-#### [bitcoin.hash256.obs] Observers
-
-```cpp
-[[nodiscard]] bool is_null() const noexcept;
-```
-
-*Returns:* `true` if and only if all stored bytes are `std::byte{0}`.
-
-#### [bitcoin.hash256.fmt] Formatter
-
-`std::formatter<bitcoin::hash256>` formats a value as 64 lowercase hexadecimal
-digits in display byte order (bytes reversed relative to wire order), as used
-by block explorers.
 
 ______________________________________________________________________
 
-### [bitcoin.txid] Class `txid`
+### [bitcoin.txid] Type `txid`
 
-`txid` is a `struct` deriving from `hash256`. It identifies a transaction by
-the SHA256d of its witness-stripped serialization.
+`txid` identifies a transaction by the SHA256d of its witness-stripped
+serialization.
 
 #### [bitcoin.txid.syn] Synopsis
 
 ```cpp
 namespace bitcoin {
 
-  struct txid : bitcoin::hash256 {};
+  using txid = basic-hash-id</* unspecified */>;
 
 } // namespace bitcoin
 ```
 
 ______________________________________________________________________
 
-### [bitcoin.wtxid] Class `wtxid`
+### [bitcoin.wtxid] Type `wtxid`
 
-`wtxid` is a `struct` deriving from `hash256`. It is the SHA256d of the full
-transaction serialization including witness data, as defined by BIP-141. A
-`wtxid` and the `txid` of the same transaction are equal only for transactions
-that carry no witness data.
+`wtxid` is the SHA256d of the full transaction serialization including witness
+data, as defined by BIP-141. A `wtxid` and the `txid` of the same transaction
+are equal only for transactions that carry no witness data.
 
 #### [bitcoin.wtxid.syn] Synopsis
 
 ```cpp
 namespace bitcoin {
 
-  struct wtxid : bitcoin::hash256 {};
+  using wtxid = basic-hash-id</* unspecified */>;
 
 } // namespace bitcoin
 ```
 
 ______________________________________________________________________
 
-### [bitcoin.block_hash] Class `block_hash`
+### [bitcoin.block_hash] Type `block_hash`
 
-`block_hash` is a `struct` deriving from `hash256`. It is the SHA256d of the
-serialized block header fields.
+`block_hash` is the SHA256d of the serialized block header fields.
 
 #### [bitcoin.block_hash.syn] Synopsis
 
 ```cpp
 namespace bitcoin {
 
-  struct block_hash : bitcoin::hash256 {};
+  using block_hash = basic-hash-id</* unspecified */>;
 
 } // namespace bitcoin
 ```
@@ -556,7 +618,15 @@ namespace bitcoin {
   };
 
 } // namespace bitcoin
+
+template<> struct std::hash<bitcoin::outpoint>;
 ```
+
+#### [bitcoin.outpoint.hash] Hash support
+
+`std::hash<bitcoin::outpoint>` is provided. The hash value is computed by
+combining `std::hash<bitcoin::txid>{}(txid())` with `index()` in an
+implementation-defined manner consistent with `operator==`.
 
 #### [bitcoin.outpoint.obs] Observers
 
