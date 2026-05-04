@@ -145,13 +145,13 @@ subtraction invites. `height()` carries a precondition that the chain is
 non-empty, consistent with the narrow-contract pattern established across these
 specifications.
 
-### D6 — Construction from a `ChainAccess`
+### D6 — Construction from a `chain-access`
 
-`chain` is constructed by forwarding any object that satisfies the `ChainAccess`
+`chain` is constructed by forwarding any object that satisfies the `chain-access`
 concept (see D7, [bitcoin.chain.access]):
 
 ```cpp
-template</* ChainAccess */ A>
+template</* chain-access */ A>
 explicit chain(A&& access);
 ```
 
@@ -173,22 +173,22 @@ failed lookup, an uninitialised chain member in a composite object, or the base
 case of a recursive chain algorithm — without requiring `std::optional<chain>`
 at every such site.
 
-### D7 — Backing store abstraction (`ChainAccess`)
+### D7 — Backing store abstraction (`chain-access`)
 
-`ChainAccess` is the concept that `chain` requires of its backing object. It is
+`chain-access` is the concept that `chain` requires of its backing object. It is
 an internal extension point: implementations supply a concrete type that
 provides `size()` and `at()`, and `chain` calls those members when it needs to
 expose headers to callers.
 
-`ChainAccess` is not a vocabulary type in its own right. It is not intended to
+`chain-access` is not a vocabulary type in its own right. It is not intended to
 appear at library boundaries independently of `chain`. Users never store or pass
-`ChainAccess` objects directly; they construct a `chain` from their backing
+`chain-access` objects directly; they construct a `chain` from their backing
 object and then work with `chain`. For this reason the concept is specified in
 this paper rather than as a separate proposal.
 
 Two implementation strategies were considered:
 
-- **Option A — C++20 concept with type erasure.** `ChainAccess` is defined as a
+- **Option A — C++20 concept with type erasure.** `chain-access` is defined as a
   C++20 `concept`. The concrete type is erased at the point of construction;
   `chain` stores only a type-erased handle. Dispatch to members is through
   function pointers captured at construction time, not through a vtable, so
@@ -206,7 +206,7 @@ inheritance requirement on implementations, allows stack-allocated or
 small-buffer-optimised backing objects, and integrates naturally with the C++20
 constraint system. Option B is conforming with respect to the Option A concept —
 any `chain_access`-derived class that overrides `size()` and `at()` already
-models `ChainAccess` — so implementations that prefer Option B may do so without
+models `chain-access` — so implementations that prefer Option B may do so without
 deviating from the spec.
 
 ### D8 — Type-erased backing store identity
@@ -215,7 +215,7 @@ deviating from the spec.
 lists, accumulated-work indices, ancestor pointers — but only when both `chain`
 objects are backed by the same concrete type and that type provides an
 optimised implementation. To enable this without relying on RTTI, each `chain`
-object carries an opaque *type token* derived from its `ChainAccess` type at
+object carries an opaque *type token* derived from its `chain-access` type at
 construction time. The type token is the address of a per-type static variable
 (the same technique used by `std::any`), obtained at the point of construction,
 and stored alongside the backing object.
@@ -223,10 +223,10 @@ and stored alongside the backing object.
 When `mismatch(other)` or `starts_with(other)` is called:
 
 1. If `*this` and `other` carry the same type token, `chain` may dispatch to an
-   optimised `mismatch_impl` provided by the shared concrete `ChainAccess` type,
+   optimised `mismatch_impl` provided by the shared concrete `chain-access` type,
    yielding a potentially sub-linear result.
 2. If the type tokens differ — because the two chains were constructed from
-   different `ChainAccess` types — `chain` falls back to a generic O(n)
+   different `chain-access` types — `chain` falls back to a generic O(n)
    element-by-element comparison via `at`.
 
 Both paths produce a correct result. Mixing two chains from different
@@ -253,15 +253,15 @@ ______________________________________________________________________
 
 ______________________________________________________________________
 
-### [bitcoin.chain.access] Concept `ChainAccess`
+### [bitcoin.chain.access] Concept `chain-access`
 
 #### [bitcoin.chain.access.general]
 
-`ChainAccess` is the concept that characterises types suitable as backing
-stores for `bitcoin::chain`. A type that models `ChainAccess` provides indexed
+`chain-access` is the concept that characterises types suitable as backing
+stores for `bitcoin::chain`. A type that models `chain-access` provides indexed
 access to block headers and reports how many headers it holds. Optionally, it
 provides an optimised mismatch implementation that `chain` may dispatch to when
-both operands share the same concrete `ChainAccess` type (see D8).
+both operands share the same concrete `chain-access` type (see D8).
 
 #### [bitcoin.chain.access.syn] Synopsis
 
@@ -269,7 +269,7 @@ both operands share the same concrete `ChainAccess` type (see D8).
 namespace bitcoin {
 
   template<typename A>
-  concept ChainAccess =                                    // exposition only
+  concept chain-access =                                    // exposition only
     requires(const A& a, std::size_t n) {
       { a.size() } noexcept -> std::same_as<std::size_t>;
       { a.at(n)  }          -> std::same_as<bitcoin::block_header>;
@@ -288,7 +288,7 @@ may receive fast-path dispatch from `chain::mismatch` and `chain::starts_with`
 when both chains were constructed from the same concrete type (see
 [bitcoin.chain.ops]).
 
-> *Note:* `ChainAccess` is not a vocabulary type intended to appear at library
+> *Note:* `chain-access` is not a vocabulary type intended to appear at library
 > boundaries independently of `chain`. It is the internal extension point
 > through which `chain` accesses its backing store. — *end note*
 
@@ -322,7 +322,7 @@ namespace bitcoin {
 
     chain() noexcept;
 
-    template<ChainAccess A>
+    template</* chain-access */ A>
     explicit chain(A&& access);
 
     [[nodiscard]] iterator  begin() const noexcept;
@@ -349,11 +349,11 @@ chain() noexcept;
 *Postconditions:* `empty()` is `true`.
 
 ```cpp
-template</* ChainAccess */ A>
+template</* chain-access */ A>
 explicit chain(A&& access);
 ```
 
-*Constraints:* `ChainAccess<std::decay_t<A>>` is satisfied.
+*Constraints:* `chain-access<std::decay_t<A>>` is satisfied.
 
 *Effects:* Initialises an internal backing store from `std::forward<A>(access)`
 using an unspecified ownership mechanism. How the storage is allocated and
@@ -412,7 +412,7 @@ a `k` exists; otherwise `{begin() + n, other.begin() + n}`.
 sub-linear algorithm where their internal representation permits.
 
 If `*this` and `other` carry the same type token (i.e. were both constructed
-from the same concrete `ChainAccess` type — see D8), the implementation may
+from the same concrete `chain-access` type — see D8), the implementation may
 dispatch to an optimised `mismatch_impl` provided by that type. Otherwise the
 implementation falls back to generic O(n) element-by-element comparison via
 `at`. Both paths produce correct results; callers need not be aware of which
@@ -428,7 +428,7 @@ path is taken.
 and `prefix` agree on every block up to and including the tip of `prefix`.
 
 If `*this` and `prefix` carry the same type token, the implementation may
-dispatch to an optimised fast path via the shared `ChainAccess` type.
+dispatch to an optimised fast path via the shared `chain-access` type.
 Otherwise the implementation falls back to O(n) element-by-element comparison.
 Both paths produce correct results.
 
