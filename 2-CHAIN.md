@@ -113,6 +113,12 @@ requirements in the normal way. The absence of a stable address for the returned
 value means `operator->()` returns an unspecified proxy type rather than a raw
 pointer.
 
+The internal representation of `chain::iterator` — whether it stores an index,
+a pointer, a reference-counted handle, or anything else — is deliberately
+unspecified. The specification constrains only observable behaviour: what
+dereferencing returns, how arithmetic moves the position, and when iterators
+remain valid.
+
 ### D4 — `mismatch` and `starts_with` are member functions
 
 `std::ranges::mismatch` and `std::ranges::starts_with` are directly usable
@@ -139,20 +145,71 @@ subtraction invites. `height()` carries a precondition that the chain is
 non-empty, consistent with the narrow-contract pattern established across these
 specifications.
 
-### D6 — Construction is implementation-defined, except for the default constructor
+### D6 — Construction from a `ChainAccess`
 
-`chain` objects are generally produced by querying a node's chain state.
-Specifying constructors that accept block data would require specifying how
-headers are associated with a chain and how the backing store is managed,
-coupling the type to implementation internals. Such constructors are therefore
-implementation-defined, following the same approach as `bitcoin::transaction`
-and `bitcoin::block` in the vocabulary types paper.
+`chain` is constructed by forwarding any object that satisfies the `ChainAccess`
+concept (see D7, [bitcoin.chain.access]):
 
-The default constructor is an exception: it creates an empty `chain` with no
-associated backing store. An empty chain is a useful sentinel — it can
-represent the result of a failed lookup, an uninitialised chain member in a
-composite object, or the base case of a recursive chain algorithm — without
-requiring `std::optional<chain>` at every such site.
+```cpp
+template<ChainAccess A>
+explicit chain(A&& access);
+```
+
+The constructor accepts a forwarding reference and arranges internal storage for
+the backing object using perfect forwarding. How that storage is managed —
+`shared_ptr`, `unique_ptr` with copy-on-write, a small-buffer optimisation, or
+anything else — is an implementation detail that is not exposed in the public
+interface. Passing a `shared_ptr` directly is intentionally not part of the API.
+
+The natural implementation wraps the access object with
+`std::make_shared<std::decay_t<A>>(std::forward<A>(access))`, because `chain`
+must be O(1) copyable to model `std::ranges::view`, a requirement that
+`unique_ptr` alone cannot satisfy. This paper notes `shared_ptr` as the most
+likely implementation choice but does not mandate it.
+
+The default constructor creates an empty `chain` with no associated backing
+store. An empty chain is a useful sentinel — it can represent the result of a
+failed lookup, an uninitialised chain member in a composite object, or the base
+case of a recursive chain algorithm — without requiring `std::optional<chain>`
+at every such site.
+
+### D7 — Backing store abstraction (`ChainAccess`)
+
+`ChainAccess` is the concept (or, under Option B, the polymorphic base class
+`chain_access`) that `chain` requires of its backing object. It is an internal
+extension point: implementations supply a concrete `ChainAccess` type that
+provides `size()` and `at()`, and `chain` calls those members when it needs to
+expose headers to callers.
+
+`chain_access` / `ChainAccess` is not a vocabulary type in its own right. It
+is not intended to appear at library boundaries independently of `chain`. Users
+never store or pass `chain_access` values directly; they construct a `chain`
+from their backing object and then work with `chain`. For this reason the
+concept is specified in this paper rather than as a separate proposal.
+
+### D8 — Type-erased backing store identity
+
+`mismatch` and `starts_with` can exploit sub-linear internal algorithms — skip
+lists, accumulated-work indices, ancestor pointers — but only when both `chain`
+objects are backed by the same concrete type and that type provides an
+optimised implementation. To enable this without relying on RTTI, each `chain`
+object carries an opaque *type token* derived from its `ChainAccess` type at
+construction time. The type token is the address of a per-type static variable
+(the same technique used by `std::any`), obtained at the point of construction,
+and stored alongside the backing object.
+
+When `mismatch(other)` or `starts_with(other)` is called:
+
+1. If `*this` and `other` carry the same type token, `chain` may dispatch to an
+   optimised `mismatch_impl` provided by the shared concrete `ChainAccess` type,
+   yielding a potentially sub-linear result.
+2. If the type tokens differ — because the two chains were constructed from
+   different `ChainAccess` types — `chain` falls back to a generic O(n)
+   element-by-element comparison via `at`.
+
+Both paths produce a correct result. Mixing two chains from different
+implementations is well-defined; it simply cannot exploit internal structure.
+This is fully transparent to callers.
 
 ______________________________________________________________________
 
@@ -171,6 +228,80 @@ ______________________________________________________________________
 ```cpp
 #define __cpp_lib_bitcoin_chain 202XXXL    // also in <bitcoin>
 ```
+
+______________________________________________________________________
+
+### [bitcoin.chain.access] Concept `ChainAccess` and class `chain_access`
+
+#### [bitcoin.chain.access.general]
+
+`ChainAccess` is the concept that characterises types suitable as backing
+stores for `bitcoin::chain`. A type that models `ChainAccess` provides indexed
+access to block headers and reports how many headers it holds. Optionally, it
+provides an optimised mismatch implementation that `chain` may dispatch to when
+both operands share the same concrete `ChainAccess` type (see D8).
+
+Two design options are available. Option A defines `ChainAccess` as a C++20
+concept, enabling statically dispatched, zero-overhead type erasure at the
+point of construction. Option B defines `chain_access` as an abstract base
+class, enabling dynamically dispatched heterogeneous implementations. This
+paper recommends Option A; the wording below presents both and notes where they
+differ.
+
+#### [bitcoin.chain.access.concept] Option A — Concept
+
+```cpp
+namespace bitcoin {
+
+  template<typename A>
+  concept ChainAccess =
+    requires(const A& a, std::size_t n) {
+      { a.size() } noexcept -> std::same_as<std::size_t>;
+      { a.at(n)  }          -> std::same_as<bitcoin::block_header>;
+    };
+
+} // namespace bitcoin
+```
+
+A type `A` that additionally provides
+
+```cpp
+std::size_t mismatch_impl(const A& other, std::size_t limit) const noexcept;
+```
+
+may receive fast-path dispatch from `chain::mismatch` and `chain::starts_with`
+when both chains were constructed from the same concrete type (see
+[bitcoin.chain.ops]).
+
+#### [bitcoin.chain.access.base] Option B — Abstract base class
+
+```cpp
+namespace bitcoin {
+
+  class chain_access {
+  public:
+    virtual ~chain_access()                                         = default;
+    virtual std::size_t          size() const noexcept             = 0;
+    virtual bitcoin::block_header at(std::size_t height) const     = 0;
+  };
+
+} // namespace bitcoin
+```
+
+Any class derived from `chain_access` and providing concrete implementations of
+`size()` and `at()` models `ChainAccess` under Option A. A derived class may
+additionally override a virtual `mismatch_impl`:
+
+```cpp
+virtual std::size_t mismatch_impl(const chain_access& other,
+                                  std::size_t         limit) const noexcept;
+```
+
+The default implementation performs element-by-element comparison via `at`.
+
+> *Note:* `chain_access` is not a vocabulary type intended to appear at library
+> boundaries independently of `chain`. It is an implementation detail of
+> `chain`'s construction mechanism. — *end note*
 
 ______________________________________________________________________
 
@@ -202,6 +333,10 @@ namespace bitcoin {
 
     chain() noexcept;
 
+    template</* ChainAccess */ A>
+    explicit chain(A&& access);   // (Option A: requires ChainAccess<std::decay_t<A>>)
+                                  // (Option B: requires std::is_base_of_v<chain_access, std::decay_t<A>>)
+
     [[nodiscard]] iterator  begin() const noexcept;
     [[nodiscard]] iterator  end()   const noexcept;
 
@@ -224,6 +359,29 @@ chain() noexcept;
 ```
 
 *Postconditions:* `empty()` is `true`.
+
+```cpp
+template</* ChainAccess */ A>
+explicit chain(A&& access);
+```
+
+*Constraints:* Under Option A, `ChainAccess<std::decay_t<A>>` is satisfied.
+Under Option B, `std::decay_t<A>` is derived from `chain_access`.
+
+*Effects:* Initialises an internal backing store from `std::forward<A>(access)`
+using an unspecified ownership mechanism. How the storage is allocated and
+managed is an implementation detail; no `shared_ptr` need appear in the
+interface.
+
+*Postconditions:* `!empty()`. The `chain` object carries a type token uniquely
+identifying `std::decay_t<A>`, which is used by `mismatch` and `starts_with`
+to determine whether a fast-path dispatch is possible (see [bitcoin.chain.ops]).
+
+*Remarks:* The most likely implementation stores the backing object in a
+`std::shared_ptr<std::decay_t<A>>` created via
+`std::make_shared<std::decay_t<A>>(std::forward<A>(access))`, because `chain`
+must be O(1) copyable to model `std::ranges::view`. This is a quality-of-
+implementation recommendation, not a normative requirement.
 
 ______________________________________________________________________
 
@@ -266,6 +424,13 @@ a `k` exists; otherwise `{begin() + n, other.begin() + n}`.
 `std::ranges::mismatch(*this, other)`, but implementations should provide a
 sub-linear algorithm where their internal representation permits.
 
+If `*this` and `other` carry the same type token (i.e. were both constructed
+from the same concrete `ChainAccess` type — see D8), the implementation may
+dispatch to an optimised `mismatch_impl` provided by that type. Otherwise the
+implementation falls back to generic O(n) element-by-element comparison via
+`at`. Both paths produce correct results; callers need not be aware of which
+path is taken.
+
 ```cpp
 [[nodiscard]] bool starts_with(const chain& prefix) const noexcept;
 ```
@@ -274,6 +439,11 @@ sub-linear algorithm where their internal representation permits.
 
 *Remarks:* Returns `true` if `prefix` is empty. Returns `true` if `*this`
 and `prefix` agree on every block up to and including the tip of `prefix`.
+
+If `*this` and `prefix` carry the same type token, the implementation may
+dispatch to an optimised fast path via the shared `ChainAccess` type.
+Otherwise the implementation falls back to O(n) element-by-element comparison.
+Both paths produce correct results.
 
 ______________________________________________________________________
 
@@ -292,6 +462,15 @@ compared with any iterator other than another singular iterator.
 
 Two iterators are _compatible_ if they were both obtained from the same
 `chain` object (or copies thereof), or both are singular.
+
+An iterator remains valid as long as the `chain` from which it was obtained
+remains valid. The internal representation of a `chain::iterator` — whether it
+stores an index, a pointer, a reference-counted handle, or anything else — is
+unspecified. The specification constrains only observable behaviour.
+
+> *Note:* Implementations should not be understood as required to store a
+> `shared_ptr` or any other specific ownership mechanism inside an iterator.
+> — *end note*
 
 #### [bitcoin.chain.iterator.syn] Synopsis
 
