@@ -151,7 +151,7 @@ specifications.
 concept (see D7, [bitcoin.chain.access]):
 
 ```cpp
-template<ChainAccess A>
+template</* ChainAccess */ A>
 explicit chain(A&& access);
 ```
 
@@ -175,17 +175,39 @@ at every such site.
 
 ### D7 — Backing store abstraction (`ChainAccess`)
 
-`ChainAccess` is the concept (or, under Option B, the polymorphic base class
-`chain_access`) that `chain` requires of its backing object. It is an internal
-extension point: implementations supply a concrete `ChainAccess` type that
+`ChainAccess` is the concept that `chain` requires of its backing object. It is
+an internal extension point: implementations supply a concrete type that
 provides `size()` and `at()`, and `chain` calls those members when it needs to
 expose headers to callers.
 
-`chain_access` / `ChainAccess` is not a vocabulary type in its own right. It
-is not intended to appear at library boundaries independently of `chain`. Users
-never store or pass `chain_access` values directly; they construct a `chain`
-from their backing object and then work with `chain`. For this reason the
-concept is specified in this paper rather than as a separate proposal.
+`ChainAccess` is not a vocabulary type in its own right. It is not intended to
+appear at library boundaries independently of `chain`. Users never store or pass
+`ChainAccess` objects directly; they construct a `chain` from their backing
+object and then work with `chain`. For this reason the concept is specified in
+this paper rather than as a separate proposal.
+
+Two implementation strategies were considered:
+
+- **Option A — C++20 concept with type erasure.** `ChainAccess` is defined as a
+  C++20 `concept`. The concrete type is erased at the point of construction;
+  `chain` stores only a type-erased handle. Dispatch to members is through
+  function pointers captured at construction time, not through a vtable, so
+  there is no per-call virtual dispatch overhead on paths that do not need the
+  fast-path `mismatch_impl`. The type token (see D8) is also captured at
+  construction and stored as an opaque value alongside the handle.
+- **Option B — abstract base class.** `chain_access` is an abstract base class
+  with pure virtual `size()` and `at()`. Implementations derive from it.
+  `chain` stores a pointer (or `shared_ptr`) to the base. This is simpler but
+  couples the backing type to a vtable and forces `chain_access` to be a
+  (non-vocabulary) base class rather than a structural concept.
+
+**This paper adopts Option A.** The concept-based approach imposes no
+inheritance requirement on implementations, allows stack-allocated or
+small-buffer-optimised backing objects, and integrates naturally with the C++20
+constraint system. Option B is conforming with respect to the Option A concept —
+any `chain_access`-derived class that overrides `size()` and `at()` already
+models `ChainAccess` — so implementations that prefer Option B may do so without
+deviating from the spec.
 
 ### D8 — Type-erased backing store identity
 
@@ -231,7 +253,7 @@ ______________________________________________________________________
 
 ______________________________________________________________________
 
-### [bitcoin.chain.access] Concept `ChainAccess` and class `chain_access`
+### [bitcoin.chain.access] Concept `ChainAccess`
 
 #### [bitcoin.chain.access.general]
 
@@ -241,20 +263,13 @@ access to block headers and reports how many headers it holds. Optionally, it
 provides an optimised mismatch implementation that `chain` may dispatch to when
 both operands share the same concrete `ChainAccess` type (see D8).
 
-Two design options are available. Option A defines `ChainAccess` as a C++20
-concept, enabling statically dispatched, zero-overhead type erasure at the
-point of construction. Option B defines `chain_access` as an abstract base
-class, enabling dynamically dispatched heterogeneous implementations. This
-paper recommends Option A; the wording below presents both and notes where they
-differ.
-
-#### [bitcoin.chain.access.concept] Option A — Concept
+#### [bitcoin.chain.access.syn] Synopsis
 
 ```cpp
 namespace bitcoin {
 
   template<typename A>
-  concept ChainAccess =
+  concept ChainAccess =                                    // exposition only
     requires(const A& a, std::size_t n) {
       { a.size() } noexcept -> std::same_as<std::size_t>;
       { a.at(n)  }          -> std::same_as<bitcoin::block_header>;
@@ -273,35 +288,9 @@ may receive fast-path dispatch from `chain::mismatch` and `chain::starts_with`
 when both chains were constructed from the same concrete type (see
 [bitcoin.chain.ops]).
 
-#### [bitcoin.chain.access.base] Option B — Abstract base class
-
-```cpp
-namespace bitcoin {
-
-  class chain_access {
-  public:
-    virtual ~chain_access()                                         = default;
-    virtual std::size_t          size() const noexcept             = 0;
-    virtual bitcoin::block_header at(std::size_t height) const     = 0;
-  };
-
-} // namespace bitcoin
-```
-
-Any class derived from `chain_access` and providing concrete implementations of
-`size()` and `at()` models `ChainAccess` under Option A. A derived class may
-additionally override a virtual `mismatch_impl`:
-
-```cpp
-virtual std::size_t mismatch_impl(const chain_access& other,
-                                  std::size_t         limit) const noexcept;
-```
-
-The default implementation performs element-by-element comparison via `at`.
-
-> *Note:* `chain_access` is not a vocabulary type intended to appear at library
-> boundaries independently of `chain`. It is an implementation detail of
-> `chain`'s construction mechanism. — *end note*
+> *Note:* `ChainAccess` is not a vocabulary type intended to appear at library
+> boundaries independently of `chain`. It is the internal extension point
+> through which `chain` accesses its backing store. — *end note*
 
 ______________________________________________________________________
 
@@ -333,9 +322,8 @@ namespace bitcoin {
 
     chain() noexcept;
 
-    template</* ChainAccess */ A>
-    explicit chain(A&& access);   // (Option A: requires ChainAccess<std::decay_t<A>>)
-                                  // (Option B: requires std::is_base_of_v<chain_access, std::decay_t<A>>)
+    template<ChainAccess A>
+    explicit chain(A&& access);
 
     [[nodiscard]] iterator  begin() const noexcept;
     [[nodiscard]] iterator  end()   const noexcept;
@@ -365,8 +353,7 @@ template</* ChainAccess */ A>
 explicit chain(A&& access);
 ```
 
-*Constraints:* Under Option A, `ChainAccess<std::decay_t<A>>` is satisfied.
-Under Option B, `std::decay_t<A>` is derived from `chain_access`.
+*Constraints:* `ChainAccess<std::decay_t<A>>` is satisfied.
 
 *Effects:* Initialises an internal backing store from `std::forward<A>(access)`
 using an unspecified ownership mechanism. How the storage is allocated and
