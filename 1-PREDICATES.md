@@ -1,9 +1,11 @@
 ---
 title: Adding Bitcoin Protocol Predicates to the C++ Standard Library
+date: today
 document: DXXXXR0
 audience:
   - Library Evolution Working Group
   - SG14 (Low-Latency / Financial)
+toc: false
 ---
 
 [For illustrative purposes only. This document is written in the style of a WG21
@@ -15,11 +17,10 @@ not under active consideration for standardization.]{.draftnote}
 This paper is a companion to *Adding Bitcoin Vocabulary Types to the C++
 Standard Library*. That paper deliberately restricts itself to faithfully
 carrying protocol data across library boundaries and omits interpretation of
-protocol fields. This paper proposes the natural complement: a set of free
-functions in `namespace bitcoin` that answer common protocol-level questions
-about those vocabulary types. Because every predicate here is expressible
-entirely in terms of the public interface of the vocabulary types, none requires
-private access and all can be specified independently.
+protocol fields. This paper proposes a set of free functions in
+`namespace bitcoin` that answer common protocol-level questions about those
+vocabulary types. Each predicate can be specified entirely in terms of the
+public interface of the vocabulary types, so no private access is required.
 
 # Motivation and Scope
 
@@ -33,10 +34,10 @@ such as:
 - Is this output provably unspendable?
 - Is the transaction locktime a block height or a timestamp?
 
-These predicates are trivially derivable from the public API, but spelling them
-out correctly requires knowing several BIP-defined magic numbers and bit-field
-layouts. Standardising them eliminates per-library reimplementations and the
-subtle bugs that come with them.
+These predicates are straightforward to derive from the public API, but their
+definitions depend on protocol constants and bit-field layouts specified by
+several BIPs. Standardizing these operations would provide a common
+specification and reduce duplicated, divergent implementations.
 
 ## In scope
 
@@ -58,39 +59,36 @@ subtle bugs that come with them.
 This paper adds free functions to `namespace bitcoin` inside the `<bitcoin>`
 header. It depends on the vocabulary types paper and introduces no new types.
 
-# Design Decisions
+# Design considerations
 
-## D1 — Free functions, not member functions
+## D1 — Non-member predicates
 
 Every predicate in this paper is expressible in terms of the public interface of
-the corresponding vocabulary type. Making them free functions rather than members
-has three advantages:
+the corresponding vocabulary type. Specifying them as non-member functions
+allows calls such as `is_coinbase(op)` to participate in argument-dependent
+lookup, permits a single function name to be overloaded across related
+vocabulary types, and allows additional predicates to be added without
+modifying the associated class definitions.
 
-1. **ADL discovery.** Callers write `is_coinbase(op)` without a namespace
-   qualifier; the compiler finds the function via argument-dependent lookup.
-2. **Overloading across types.** A single name `is_coinbase` serves `txid`,
-   `outpoint`, and `transaction`; callers do not need to remember which type
-   carries which spelling.
-3. **Independent evolution.** Predicates can be added in follow-on papers
-   without touching the vocabulary type definitions or breaking ABI.
-
-## D2 — Definitions are normative
+## D2 — Normative semantic requirements
 
 Unlike the vocabulary types (whose internal representation is
-implementation-defined), these predicates have fully normative *Returns:*
-clauses expressed in terms of the public API. Implementations may not deviate.
+implementation-defined), these predicates have complete *Returns:* clauses
+expressed in terms of the public API. The specification therefore gives their
+semantics entirely in terms of the public interface.
 
-## D3 — `sequence`-based predicates depend on transaction version
+## D3 — Transaction-version dependence of sequence-based predicates
 
 BIP-68 relative locktime is only active when the enclosing transaction's version
 is ≥ 2. `has_relative_locktime` as specified here reflects only the
 `tx_input`-level field condition (bit 31 clear, not final); enforcement of the
 transaction-version gate is consensus logic and out of scope.
 
-# Technical Specifications
+# Proposed wording
 
-All changes are relative to the C++ Working Draft and assume the wording of
-*Adding Bitcoin Vocabulary Types to the C++ Standard Library* has been applied.
+The wording in this section is relative to the C++ Working Draft and assumes
+that the wording of *Adding Bitcoin Vocabulary Types to the C++ Standard
+Library* has been applied.
 
 ## [bitcoin.pred] Bitcoin protocol predicates
 
@@ -174,7 +172,7 @@ logic and not part of this predicate.
 *Returns:* `!as_bytes(o.script()).empty() && as_bytes(o.script()).front() == std::byte{0x6a}`.
 
 *Remarks:* An output whose script begins with `OP_RETURN` (`0x6a`) is provably
-unspendable and conventionally used to embed arbitrary data in the blockchain.
+unspendable. Such outputs are commonly used to carry data.
 
 ### [bitcoin.pred.transaction]
 

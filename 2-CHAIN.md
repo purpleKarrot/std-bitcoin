@@ -1,9 +1,11 @@
 ---
 title: Adding a Bitcoin Chain View Type to the C++ Standard Library
+date: today
 document: DXXXXR0
 audience:
   - Library Evolution Working Group
   - SG14 (Low-Latency / Financial)
+toc: false
 ---
 
 [For illustrative purposes only. This document is written in the style of a WG21
@@ -17,9 +19,9 @@ the header `<bitcoin>`. A `chain` is a random-access view of the sequence of
 `bitcoin::block_header` values on the path from the genesis block to a
 particular tip. It models `std::ranges::random_access_range` and
 `std::ranges::view`, and provides member operations `mismatch` and
-`starts_with` for efficient comparison of competing chain tips. This paper
-specifies the type itself; the node-level functions that produce `chain`
-objects are outside scope.
+`starts_with` for comparing chain prefixes and identifying divergence points
+between competing chain tips. This paper specifies the type itself; the
+node-level functions that produce `chain` objects are outside scope.
 
 # Motivation and Scope
 
@@ -30,11 +32,11 @@ the current best chain?" or "find the chain containing this block?" must be
 expressible in a common type, independent of any particular implementation's
 internal storage or indexing strategy.
 
-Today, every C++ Bitcoin library returns its own opaque chain representation.
-Cross-library tools — chain comparison utilities, testing harnesses, analysis
-scripts — must write per-library adapters. A common `chain` type eliminates
-this friction in the same way that a common `block_header` type eliminates the
-need to adapt hash representations.
+Today, C++ Bitcoin libraries generally return implementation-specific chain
+representations. Cross-library tools — chain comparison utilities, testing
+harnesses, analysis scripts — therefore require per-library adapters. A common
+`chain` type would improve interoperability in the same way that a common
+`block_header` type reduces the need for representation-specific adaptation.
 
 ## In scope
 
@@ -59,26 +61,27 @@ of *Adding Bitcoin Vocabulary Types to the C++ Standard Library* and
 introduces no new dependencies beyond `<ranges>`, which is already required
 by that paper.
 
-# Design Decisions
+# Design considerations
 
-## D1 — `chain` is a view, not a container
+## D1 — View semantics
 
-A `chain` does not own the block headers it exposes. Implementations
-maintain block data in their own storage (on-disk databases, in-memory trees,
-flat files). `chain` is a lightweight handle — a view over that storage —
-intended to be cheap to copy and pass by value. This follows the same
-rationale as the *value-range*<T> return types in the vocabulary types paper,
-generalised to a first-class named type.
+A `chain` does not own the block headers it exposes. Implementations maintain
+block data in their own storage (on-disk databases, in-memory trees, flat
+files). `chain` is a lightweight handle — a view over that storage — intended
+to be inexpensive to copy and pass by value. This follows the same rationale as
+the *value-range*<T> return types in the vocabulary types paper, generalized to
+a first-class named type.
 
-## D2 — `chain` derives from `std::ranges::view_interface<chain>`
+## D2 — Use of `std::ranges::view_interface<chain>`
 
 Deriving from `std::ranges::view_interface<chain>` and providing `begin()` and
-`end()` yields `operator[]`, `front()`, `back()`, `size()`, and `empty()` at
-no cost, and ensures `chain` composes naturally with `<algorithm>`, `<ranges>`,
-and user-written generic code. This is the standard mechanism for user-defined
-views in C++20 and avoids reimplementing derived range operations by hand.
+`end()` makes `operator[]`, `front()`, `back()`, `size()`, and `empty()`
+available through `view_interface`, and integrates `chain` with `<algorithm>`,
+`<ranges>`, and user-written generic code. This is the standard mechanism for
+user-defined views in C++20 and avoids separately specifying derived range
+operations.
 
-## D3 — The iterator is a proxy random-access iterator
+## D3 — Proxy iterator model
 
 No known Bitcoin implementation stores block headers as a contiguous array of
 `block_header` objects. An iterator over a `chain` must read or reconstruct
@@ -87,12 +90,12 @@ headers from implementation-defined storage on demand. Consequently
 than by reference, making the iterator a proxy iterator. Unlike the C++17
 iterator model, C++20 does not require `reference` to be `value_type&`; it
 requires only that dereferencing the iterator yields a readable value. A
-`chain::iterator` satisfies all remaining `std::random_access_iterator`
-requirements in the normal way. The absence of a stable address for the returned
-value means `operator->()` returns an unspecified proxy type rather than a raw
-pointer.
+`chain::iterator` otherwise satisfies the remaining
+`std::random_access_iterator` requirements. The absence of a stable address for
+the returned value means `operator->()` returns an unspecified proxy type
+rather than a raw pointer.
 
-## D4 — `mismatch` and `starts_with` are member functions
+## D4 — Member comparison operations
 
 `std::ranges::mismatch` and `std::ranges::starts_with` are directly usable
 with `chain` values, since `chain` models `std::ranges::random_access_range`.
@@ -102,23 +105,23 @@ They are additionally provided as member functions for two reasons:
    pointers, skip lists, or accumulated-work metadata — to answer these
    queries in O(log n) or O(1) rather than the O(n) required by generic
    element-by-element comparison.
-2. Making them members signals that implementations are expected to provide
-   such an optimised override, rather than inheriting a linear fallback.
+2. Providing corresponding member operations permits implementations to
+   supply specialized implementations while preserving the semantics of the
+   generic algorithms.
 
 The semantics are identical to the corresponding range algorithms; callers who
 prefer the generic form may always use `std::ranges::mismatch(a, b)`.
 
-## D5 — `height()` as a named observer
+## D5 — Named observer
 
 The height of a chain — the zero-based index of its tip block — is a
 fundamental domain concept referenced by BIP-34, BIP-65, BIP-112, and others.
 Although `height() == size() - 1` for any non-empty chain, exposing a named
-`height()` is more idiomatic and eliminates the off-by-one error that the
-subtraction invites. `height()` carries a precondition that the chain is
-non-empty, consistent with the narrow-contract pattern established across these
-specifications.
+`height()` avoids repeated `size() - 1` expressions and makes the non-empty
+precondition explicit. `height()` follows the narrow-contract pattern used
+throughout these specifications.
 
-## D6 — Construction is implementation-defined, except for the default constructor
+## D6 — Construction
 
 `chain` objects are generally produced by querying a node's chain state.
 Specifying constructors that accept block data would require specifying how
@@ -128,15 +131,15 @@ implementation-defined, following the same approach as `bitcoin::transaction`
 and `bitcoin::block` in the vocabulary types paper.
 
 The default constructor is an exception: it creates an empty `chain` with no
-associated backing store. An empty chain is a useful sentinel — it can
-represent the result of a failed lookup, an uninitialised chain member in a
-composite object, or the base case of a recursive chain algorithm — without
-requiring `std::optional<chain>` at every such site.
+associated backing store. This provides a useful empty state for failed
+lookups, default member initialization, and recursive chain algorithms without
+requiring `std::optional<chain>` in each such use.
 
-# Technical Specifications
+# Proposed wording
 
-All additions are relative to the C++ Working Draft and assume the wording of
-*Adding Bitcoin Vocabulary Types to the C++ Standard Library* has been applied.
+The wording in this section is relative to the C++ Working Draft and assumes
+that the wording of *Adding Bitcoin Vocabulary Types to the C++ Standard
+Library* has been applied.
 
 [Add `class chain` and `class chain::iterator` to the `<bitcoin>` header
 synopsis in [bitcoin.syn].]{.ednote}
@@ -156,7 +159,7 @@ synopsis in [bitcoin.syn].]{.ednote}
   particular block. Element `chain[0]` is the genesis block header; element
   `chain[n]` is the block header at height `n`.
 - A `chain` is _empty_ if it contains no elements. An empty `chain` is a
-  valid object; access to its elements is undefined behaviour.
+  valid object; access to its elements is undefined behavior.
 - `chain` derives from `std::ranges::view_interface<chain>`. In addition to
   the members listed in [bitcoin.chain.syn], `view_interface` provides
   `operator[]`, `front()`, `back()`, `size()`, and `empty()`.

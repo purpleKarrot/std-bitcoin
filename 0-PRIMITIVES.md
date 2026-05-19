@@ -1,9 +1,11 @@
 ---
 title: Adding Bitcoin Vocabulary Types to the C++ Standard Library
+date: today
 document: DXXXXR0
 audience:
   - Library Evolution Working Group
   - SG14 (Low-Latency / Financial)
+toc: false
 ---
 
 [For illustrative purposes only. This document is written in the style of a WG21
@@ -14,23 +16,23 @@ not under active consideration for standardization.]{.draftnote}
 
 This paper proposes adding a set of vocabulary types for the Bitcoin protocol to
 the C++ Standard Library under the header `<bitcoin>`. These types live in
-`namespace bitcoin`. The goal is stable, zero-overhead, strongly-typed building
-blocks that interoperate across libraries without each defining their own
-incompatible representations.
+`namespace bitcoin`. The proposed facility provides zero-overhead, strongly
+typed vocabulary types intended to improve interoperability among independently
+developed libraries.
 
 # Motivation and Scope
 
 Bitcoin and the broader ecosystem of protocols built on top of it (Lightning
-Network, Liquid, Ark, …) are implemented in dozens of independent C++ libraries.
-Every one of them defines its own `uint256`, `CTransaction`, `CTxOut`, or
-equivalent. These types are structurally identical yet source-incompatible,
-forcing needless conversion layers, copies, and impedance-mismatch bugs at every
-library boundary.
+Network, Liquid, Ark, …) are implemented in many independent C++ libraries.
+Such libraries commonly define their own `uint256`, `CTransaction`, `CTxOut`,
+or equivalent types. These types are often structurally similar yet
+source-incompatible, so code that crosses library boundaries typically requires
+adaptation code and conversions.
 
-The situation mirrors the pre-`std::chrono` world, where every project had its
-own time duration type. `<chrono>` solved that class of problem by giving
-duration a permanent, well-specified home in the standard. We propose the same
-treatment for Bitcoin's core wire-protocol types.
+This is similar to other cases in which the standard library provides a common
+vocabulary type for facilities that would otherwise be modeled independently by
+each implementation. This paper applies the same approach to core Bitcoin
+wire-protocol types.
 
 ## In scope
 
@@ -58,7 +60,7 @@ depends on:
 
 No existing names are modified or deprecated.
 
-# Design Decisions
+# Design considerations
 
 ## D1 — Strong types over raw integers and byte arrays
 
@@ -70,62 +72,60 @@ The proposal models these as distinct specializations of an exposition-only
 template `basic-hash-id<Tag>`, producing separate, non-interconvertible types
 with identical storage representation.
 
-## D2 — Wire byte order internally; display byte order externally
+## D2 — Storage and display byte order
 
-Bitcoin's double-SHA256 digests are stored on the wire in little-endian (natural
-hash) byte order. Block explorers, wallet software, and developer tooling
-display them byte-reversed. The types store wire order internally. `std::format`
-/ `std::to_string` produce the byte-reversed hex representation that every
-existing tool expects.
+Bitcoin's double-SHA256 digests are stored on the wire in little-endian
+("natural hash") byte order. Block explorers, wallet software, and similar
+tools commonly display them with the bytes reversed. The proposed types store
+wire order internally. `std::format` and `std::to_string` produce the customary
+display representation.
 
-## D3 — `amount` is not `int64_t`
+## D3 — Distinct monetary type
 
-Satoshi amounts need overflow-checked arithmetic and must never be confused with
-unrelated integers. `bitcoin::amount` wraps `int64_t`, exposes named constants
-(`coin()`, `max_money()`), and provides `+`, `-`, `*` (scalar), and `/` (scalar)
-only through checked operations.
+Satoshi amounts require overflow-checked arithmetic and should not be confused
+with unrelated integers. `bitcoin::amount` wraps `int64_t`, exposes named
+constants (`coin()`, `max_money()`), and provides `+`, `-`, `*` (scalar), and
+`/` (scalar) only through checked operations.
 
-## D4 — `script` is an opaque byte container at vocabulary level
+## D4 — Opaque script representation
 
 Pattern-matching for `P2PKH`, `P2TR`, opcode enumeration, and script execution
 belong to a higher-level facility (not proposed here). At vocabulary level
 `script` is an opaque container exposing only a `std::span<const std::byte>`
 view.
 
-## D5 — Witness data belongs to each input
+## D5 — Witness association with inputs
 
 Each `tx_input` exposes its witness data through a `witness()` observer
 returning an implementation-defined range of byte strings. An empty range
 indicates a non-SegWit input. The BIP-141 wire-format segregation of witness
 data to the end of the transaction is an encoding artifact and imposes no
-constraint on the vocabulary-level design. Implementations are free to store
-witness data co-located with each input or in a separate parallel structure.
+constraint on the vocabulary-level design. Implementations may store witness
+data with each input or in a separate parallel structure.
 
-## D6 — Opaque classes; no exposed storage types
+## D6 — Opaque class types
 
 All types are `class` with private data members and accessor-only public
 interfaces. Collection accessors return an unspecified type satisfying the
 *value-range*<T> named requirement (see D10) rather than `const std::vector<T>&`,
-giving implementations full freedom over their backing store.
+permitting implementations to choose the backing representation.
 
-## D7 — User-defined literals live in `bitcoin::literals`
+## D7 — Literal namespace
 
 Opt-in literals (`_sat`, `_btc`) are placed in the sub-namespace
 `bitcoin::literals`, following the same convention as `std::chrono_literals` and
 `std::string_literals`. Callers bring them into scope with
 `using namespace bitcoin::literals`.
 
-## D8 — Script accessor naming drops Hungarian Notation
+## D8 — Accessor naming
 
-Bitcoin Core names the input authorization script `scriptSig` and the output
-locking script `scriptPubKey`. The `script` prefix is type information — a habit
-carried over from Satoshi's use of Hungarian Notation — that adds no meaning in
-a typed API. The more descriptive alternatives (`input_script`, `output_script`)
-are redundant given that the owning class already provides that context. Both
-accessors are therefore simply named `script()`, on `tx_input` and `tx_output`
-respectively.
+Bitcoin Core uses the legacy terms `scriptSig` and `scriptPubKey` for the
+input authorization script and output locking script, respectively. The clearer
+alternatives are `input_script` and `output_script`; however, in the proposed
+interface, the owning classes `tx_input` and `tx_output` already supply that
+input/output context. The accessors are therefore simply named `script()`.
 
-## D9 — ABI stability strategy is implementation-defined
+## D9 — ABI considerations
 
 This paper does not mandate any particular ABI versioning scheme. Whether to
 use per-type `inline namespace` versioning (e.g. `inline namespace
@@ -134,7 +134,7 @@ versioning at all is an implementer's choice. The paper requires only that all
 types and constants are accessible as `bitcoin::hash256`, `bitcoin::amount`,
 etc. — i.e. as direct members of `namespace bitcoin`.
 
-## D10 — Exposition-only range helpers
+## D10 — Exposition-only range helper
 
 One exposition-only helper constrains return types of collection accessors in
 this paper. It is not part of the public API.
@@ -149,9 +149,9 @@ collection class exposes its return type as a named member typedef (e.g.
 `transaction::input_view`) whose concrete type is *implementation-defined* but
 must satisfy *value-range*<T>.
 
-# Technical Specifications
+# Proposed wording
 
-All additions are relative to the C++ Working Draft.
+The wording in this section is relative to the C++ Working Draft.
 
 [Add `<bitcoin>` to the table of standard library headers in [headers] and
 insert a new Clause [bitcoin] after [time.h.syn].]{.ednote}
