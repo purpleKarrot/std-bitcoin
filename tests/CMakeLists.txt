@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: BSL-1.0
+
+include(FetchContent)
+FetchContent_Declare(doctest
+  URL https://github.com/doctest/doctest/archive/refs/tags/v2.5.2.tar.gz
+  )
+FetchContent_MakeAvailable(doctest)
+
+add_executable(stdbtc-tests
+  hash_id.cpp
+  )
+
+target_link_libraries(stdbtc-tests PRIVATE
+  stdbtc
+  doctest::doctest_with_main
+  )
+
+add_test(NAME stdbtc-tests COMMAND stdbtc-tests)

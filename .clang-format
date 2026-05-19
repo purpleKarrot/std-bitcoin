@@ -1,0 +1,37 @@
+---
+BasedOnStyle: Mozilla
+AlignOperands: DontAlign
+AlwaysBreakAfterDefinitionReturnType: None
+BinPackArguments: true
+BinPackParameters: true
+BraceWrapping:
+  AfterClass: true
+  AfterEnum: true
+  AfterFunction: true
+  AfterStruct: true
+  AfterUnion: true
+  BeforeCatch: true
+  BeforeElse: true
+BreakAfterReturnType: None
+BreakBeforeBraces: Custom
+Cpp11BracedListStyle: FunctionCall
+FixNamespaceComments: true
+IncludeBlocks: Regroup
+IncludeCategories:
+  - Regex: '^"'
+    Priority: 5
+  - Regex: "^<bitcoin/"
+    Priority: 4
+  - Regex: "^<[a-z_]+>$"
+    Priority: 1
+  - Regex: '^<[^./]+\.h>$'
+    Priority: 2
+  - Regex: ".*"
+    Priority: 3
+IncludeIsMainRegex: "(_test.*)?$"
+IndentPPDirectives: AfterHash
+InsertBraces: true
+MainIncludeChar: Any
+QualifierAlignment: Right
+SpaceAfterTemplateKeyword: true
+...
