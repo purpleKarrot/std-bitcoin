@@ -1,22 +1,16 @@
-# Adding Bitcoin Protocol Predicates to the C++ Standard Library
+---
+title: Adding Bitcoin Protocol Predicates to the C++ Standard Library
+document: DXXXXR0
+audience:
+  - Library Evolution Working Group
+  - SG14 (Low-Latency / Financial)
+---
 
-> **Status:** Early draft — companion to *Adding Bitcoin Vocabulary Types to the
-> C++ Standard Library* (0-PRIMITIVES.md).
+[For illustrative purposes only. This document is written in the style of a WG21
+standardization paper. It has not been submitted to the ISO C++ committee and is
+not under active consideration for standardization.]{.draftnote}
 
-______________________________________________________________________
-
-## Table of Contents
-
-1. [Abstract](#abstract)
-2. [Motivation and Scope](#motivation-and-scope)
-3. [Impact on the Standard](#impact-on-the-standard)
-4. [Design Decisions](#design-decisions)
-5. [Technical Specifications](#technical-specifications)
-6. [References](#references)
-
-______________________________________________________________________
-
-## Abstract
+# Abstract
 
 This paper is a companion to *Adding Bitcoin Vocabulary Types to the C++
 Standard Library*. That paper deliberately restricts itself to faithfully
@@ -27,9 +21,7 @@ about those vocabulary types. Because every predicate here is expressible
 entirely in terms of the public interface of the vocabulary types, none requires
 private access and all can be specified independently.
 
-______________________________________________________________________
-
-## Motivation and Scope
+# Motivation and Scope
 
 The vocabulary types paper exposes raw protocol fields (`sequence`, `locktime`,
 `version`, …) without interpreting them. Many clients need to answer questions
@@ -46,14 +38,14 @@ out correctly requires knowing several BIP-defined magic numbers and bit-field
 layouts. Standardising them eliminates per-library reimplementations and the
 subtle bugs that come with them.
 
-### In scope
+## In scope
 
 - Free-function predicates on `outpoint`, `tx_input`, `tx_output`,
   `transaction`, and `block`.
 - Definitions expressed entirely in terms of the public interface of the
   vocabulary types.
 
-### Out of scope
+## Out of scope
 
 - Consensus validation.
 - Strong types for raw integer fields (`sequence`, `locktime`, `version`, …) —
@@ -61,18 +53,14 @@ subtle bugs that come with them.
 - Script execution or script pattern matching beyond a single leading-byte check
   for provably unspendable outputs.
 
-______________________________________________________________________
-
-## Impact on the Standard
+# Impact on the Standard
 
 This paper adds free functions to `namespace bitcoin` inside the `<bitcoin>`
 header. It depends on the vocabulary types paper and introduces no new types.
 
-______________________________________________________________________
+# Design Decisions
 
-## Design Decisions
-
-### D1 — Free functions, not member functions
+## D1 — Free functions, not member functions
 
 Every predicate in this paper is expressible in terms of the public interface of
 the corresponding vocabulary type. Making them free functions rather than members
@@ -86,29 +74,27 @@ has three advantages:
 3. **Independent evolution.** Predicates can be added in follow-on papers
    without touching the vocabulary type definitions or breaking ABI.
 
-### D2 — Definitions are normative
+## D2 — Definitions are normative
 
 Unlike the vocabulary types (whose internal representation is
 implementation-defined), these predicates have fully normative *Returns:*
 clauses expressed in terms of the public API. Implementations may not deviate.
 
-### D3 — `sequence`-based predicates depend on transaction version
+## D3 — `sequence`-based predicates depend on transaction version
 
 BIP-68 relative locktime is only active when the enclosing transaction's version
 is ≥ 2. `has_relative_locktime` as specified here reflects only the
 `tx_input`-level field condition (bit 31 clear, not final); enforcement of the
 transaction-version gate is consensus logic and out of scope.
 
-______________________________________________________________________
-
-## Technical Specifications
+# Technical Specifications
 
 All changes are relative to the C++ Working Draft and assume the wording of
 *Adding Bitcoin Vocabulary Types to the C++ Standard Library* has been applied.
 
-### [bitcoin.pred] Bitcoin protocol predicates
+## [bitcoin.pred] Bitcoin protocol predicates
 
-#### [bitcoin.pred.syn] Synopsis
+### [bitcoin.pred.syn] Synopsis
 
 All functions in [bitcoin.pred] are declared in `namespace bitcoin` inside the
 `<bitcoin>` header.
@@ -141,9 +127,7 @@ namespace bitcoin {
 } // namespace bitcoin
 ```
 
-______________________________________________________________________
-
-#### [bitcoin.pred.txid]
+### [bitcoin.pred.txid]
 
 ```cpp
 [[nodiscard]] bool is_coinbase(const txid& t) noexcept;
@@ -151,9 +135,7 @@ ______________________________________________________________________
 
 *Returns:* `t.is_null()`.
 
-______________________________________________________________________
-
-#### [bitcoin.pred.outpoint]
+### [bitcoin.pred.outpoint]
 
 ```cpp
 [[nodiscard]] bool is_coinbase(const outpoint& o) noexcept;
@@ -161,9 +143,7 @@ ______________________________________________________________________
 
 *Returns:* `is_coinbase(o.txid())`.
 
-______________________________________________________________________
-
-#### [bitcoin.pred.tx_input]
+### [bitcoin.pred.tx_input]
 
 ```cpp
 [[nodiscard]] bool signals_rbf(const tx_input& i) noexcept;
@@ -185,9 +165,7 @@ sequence not final). Whether the relative locktime is enforced depends on the
 enclosing transaction's version field (≥ 2 required); that check is consensus
 logic and not part of this predicate.
 
-______________________________________________________________________
-
-#### [bitcoin.pred.tx_output]
+### [bitcoin.pred.tx_output]
 
 ```cpp
 [[nodiscard]] bool is_unspendable(const tx_output& o) noexcept;
@@ -198,9 +176,7 @@ ______________________________________________________________________
 *Remarks:* An output whose script begins with `OP_RETURN` (`0x6a`) is provably
 unspendable and conventionally used to embed arbitrary data in the blockchain.
 
-______________________________________________________________________
-
-#### [bitcoin.pred.transaction]
+### [bitcoin.pred.transaction]
 
 ```cpp
 [[nodiscard]] bool is_coinbase(const transaction& t) noexcept;
@@ -229,9 +205,7 @@ SegWit if at least one of its inputs carries witness data.
 a value at or above that threshold is a UNIX epoch timestamp in seconds (BIP-65,
 BIP-112).
 
-______________________________________________________________________
-
-#### [bitcoin.pred.block]
+### [bitcoin.pred.block]
 
 ```cpp
 [[nodiscard]] bool has_coinbase(const block& b) noexcept;
@@ -239,9 +213,7 @@ ______________________________________________________________________
 
 *Returns:* `!b.transactions().empty() && is_coinbase(b.transactions().front())`.
 
-______________________________________________________________________
-
-## References
+# References
 
 - **BIP-65** — OP_CHECKLOCKTIMEVERIFY\
   <https://github.com/bitcoin/bips/blob/master/bip-0065.mediawiki>
