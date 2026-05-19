@@ -82,10 +82,11 @@ display representation.
 
 ## D3 — Distinct monetary type
 
-Satoshi amounts require overflow-checked arithmetic and should not be confused
-with unrelated integers. `bitcoin::amount` wraps `int64_t`, exposes named
-constants (`coin()`, `max_money()`), and provides `+`, `-`, `*` (scalar), and
-`/` (scalar) only through checked operations.
+Bitcoin monetary values should not be confused with unrelated integers.
+`bitcoin::amount` is a `std::quantity` specialization with `std::int64_t`
+representation and `bitcoin::units::satoshi` as its reference unit. The type
+represents Bitcoin-denominated quantities; protocol-level constraints such as
+the valid money range are not imposed by the type itself.
 
 ## D4 — Opaque script representation
 
@@ -110,12 +111,11 @@ interfaces. Collection accessors return an unspecified type satisfying the
 *value-range*<T> named requirement (see D10) rather than `const std::vector<T>&`,
 permitting implementations to choose the backing representation.
 
-## D7 — Literal namespace
+## D7 — Unit namespace
 
-Opt-in literals (`_sat`, `_btc`) are placed in the sub-namespace
-`bitcoin::literals`, following the same convention as `std::chrono_literals` and
-`std::string_literals`. Callers bring them into scope with
-`using namespace bitcoin::literals`.
+The sub-namespace `bitcoin::units` contains the monetary unit constants
+`satoshi` and `btc`. Exposing them as ordinary unit objects permits
+construction, conversion, and formatting through the quantity interface.
 
 ## D8 — Accessor naming
 
@@ -172,13 +172,19 @@ for the Bitcoin wire protocol.
 ```cpp
 namespace bitcoin {
 
+  namespace units {
+    inline constexpr /* see [bitcoin.amount] */ satoshi;
+    inline constexpr /* see [bitcoin.amount] */ btc;
+  }
+
+  using amount = std::quantity<units::satoshi, std::int64_t>;
+
   template<class Tag> class basic-hash-id; // exposition only
   using hash256    = basic-hash-id</* unspecified */>;
   using txid       = basic-hash-id</* unspecified */>;
   using wtxid      = basic-hash-id</* unspecified */>;
   using block_hash = basic-hash-id</* unspecified */>;
   class parse_error;
-  class amount;
   class script;
   class outpoint;
   class tx_input;
@@ -187,20 +193,42 @@ namespace bitcoin {
   class block_header;
   class block;
 
-  namespace literals {
-    consteval amount operator""_sat(unsigned long long);
-    consteval amount operator""_btc(long double);
-    consteval amount operator""_btc(unsigned long long);
-  }
-
 } // namespace bitcoin
 
 template<class Tag> struct std::formatter<bitcoin::basic-hash-id<Tag>>;
-template<>         struct std::formatter<bitcoin::amount>;
 
 template<class Tag> struct std::hash<bitcoin::basic-hash-id<Tag>>;
 template<>         struct std::hash<bitcoin::outpoint>;
 ```
+
+## [bitcoin.amount] Type `amount`
+
+### [bitcoin.amount.overview]
+
+`amount` is an alias for `std::quantity<units::satoshi, std::int64_t>`. It
+represents a Bitcoin-denominated quantity measured in satoshis. The type does
+not impose protocol-level constraints such as the valid money range.
+
+### [bitcoin.amount.syn] Synopsis
+
+```cpp
+namespace bitcoin {
+
+  namespace units {
+    inline constexpr /*unit*/ satoshi;
+    inline constexpr /*unit*/ btc;
+  }
+
+  using amount = std::quantity<units::satoshi, std::int64_t>;
+
+} // namespace bitcoin
+```
+
+### [bitcoin.amount.units] Unit constants
+
+`units::satoshi` denotes the reference unit of `amount`.
+
+`units::btc` denotes `100'000'000 * units::satoshi`.
 
 ## [bitcoin.hashid] Class template `basic-hash-id`
 
@@ -359,153 +387,6 @@ namespace bitcoin {
 `parse_error` is thrown by the deserializing constructors of `transaction`
 ([bitcoin.transaction.cons]) and `block` ([bitcoin.block.cons]) when `raw`
 does not contain a valid, complete wire-format encoding.
-
-## [bitcoin.amount] Class `amount`
-
-### [bitcoin.amount.overview]
-
-An `amount` holds a satoshi-denominated monetary value. The invariant
-`0 <= satoshis() <= 2'100'000'000'000'000` holds for every `amount` object.
-
-### [bitcoin.amount.syn] Synopsis
-
-```cpp
-namespace bitcoin {
-
-  class amount {
-  public:
-    static constexpr amount zero()      noexcept;
-    static constexpr amount coin()      noexcept;
-    static constexpr amount max_money() noexcept;
-
-    constexpr amount() noexcept;
-    constexpr explicit amount(std::int64_t sat);
-
-    [[nodiscard]] constexpr std::int64_t satoshis() const noexcept;
-
-    constexpr amount  operator+ (amount rhs) const;
-    constexpr amount  operator- (amount rhs) const;
-    constexpr amount  operator* (std::int64_t scalar) const;
-    constexpr amount  operator/ (std::int64_t divisor) const;
-    constexpr amount& operator+=(amount rhs);
-    constexpr amount& operator-=(amount rhs);
-
-    friend bool operator==(amount, amount) noexcept = default;
-    friend auto operator<=>(amount, amount) noexcept = default;
-
-  private:
-    std::int64_t n; // exposition only
-  };
-
-} // namespace bitcoin
-
-template<> struct std::formatter<bitcoin::amount>;
-```
-
-### [bitcoin.amount.static] Static members
-
-```cpp
-static constexpr amount zero()      noexcept; // returns amount{}
-static constexpr amount coin()      noexcept; // returns amount{100'000'000}
-static constexpr amount max_money() noexcept; // returns amount{2'100'000'000'000'000}
-```
-
-### [bitcoin.amount.cons] Constructors
-
-```cpp
-constexpr amount() noexcept;
-```
-
-*Postconditions:* `satoshis() == 0`.
-
-```cpp
-constexpr explicit amount(std::int64_t sat);
-```
-
-*Preconditions:* `sat >= 0 && sat <= 2'100'000'000'000'000`.
-
-*Effects:* Initializes the stored value to `sat`.
-
-*Throws:* `std::out_of_range` if the precondition is not satisfied.
-
-### [bitcoin.amount.obs] Observers
-
-```cpp
-[[nodiscard]] constexpr std::int64_t satoshis() const noexcept;
-```
-
-*Returns:* The stored satoshi value.
-
-### [bitcoin.amount.arith] Arithmetic
-
-```cpp
-constexpr amount  operator+(amount rhs) const;
-constexpr amount& operator+=(amount rhs);
-```
-
-*Returns / Effects:* The sum of `*this` and `rhs`.
-
-*Throws:* `std::overflow_error` if the result would exceed `max_money()`.
-
-```cpp
-constexpr amount  operator-(amount rhs) const;
-constexpr amount& operator-=(amount rhs);
-```
-
-*Returns / Effects:* The difference `*this - rhs`.
-
-*Throws:* `std::overflow_error` if the result would be negative.
-
-```cpp
-constexpr amount operator*(std::int64_t scalar) const;
-```
-
-*Returns:* The product of `satoshis()` and `scalar`.
-
-*Throws:* `std::overflow_error` if the result would violate the class invariant.
-
-```cpp
-constexpr amount operator/(std::int64_t divisor) const;
-```
-
-*Preconditions:* `divisor != 0`.
-
-*Returns:* `satoshis()` divided by `divisor`, truncated toward zero.
-
-*Throws:* `std::invalid_argument` if `divisor == 0`.
-
-### [bitcoin.amount.fmt] Formatter
-
-`std::formatter<bitcoin::amount>` supports two format specifiers:
-- Default (empty spec): `"X.XXXXXXXX BTC"` with exactly eight decimal places.
-- `"sat"`: the raw satoshi count as a decimal integer.
-
-## [bitcoin.literals] Literals
-
-```cpp
-consteval bitcoin::amount operator""_sat(unsigned long long v);
-```
-
-*Constraints:* `v <= 2'100'000'000'000'000`.
-
-*Returns:* `bitcoin::amount{static_cast<std::int64_t>(v)}`.
-
-```cpp
-consteval bitcoin::amount operator""_btc(unsigned long long v);
-```
-
-*Constraints:* `v * 100'000'000 <= 2'100'000'000'000'000`.
-
-*Returns:* `bitcoin::amount{static_cast<std::int64_t>(v) * 100'000'000}`.
-
-```cpp
-consteval bitcoin::amount operator""_btc(long double v);
-```
-
-*Constraints:* The nearest representable satoshi value of `v * 100'000'000` lies
-in `[0, 2'100'000'000'000'000]`.
-
-*Returns:* `bitcoin::amount{static_cast<std::int64_t>(std::roundl(v * 100'000'000L))}`.
 
 ## [bitcoin.script] Class `script`
 
