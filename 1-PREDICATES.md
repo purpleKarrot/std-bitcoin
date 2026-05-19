@@ -6,6 +6,29 @@ audience:
   - Library Evolution Working Group
   - SG14 (Low-Latency / Financial)
 toc: false
+references:
+  - id: BIP65
+    citation-label: BIP-65
+    title: "BIP-65: OP_CHECKLOCKTIMEVERIFY"
+    URL: https://github.com/bitcoin/bips/blob/master/bip-0065.mediawiki
+  - id: BIP68
+    citation-label: BIP-68
+    title: >-
+      BIP-68: Relative lock-time using consensus-enforced sequence
+      numbers
+    URL: https://github.com/bitcoin/bips/blob/master/bip-0068.mediawiki
+  - id: BIP112
+    citation-label: BIP-112
+    title: "BIP-112: CHECKSEQUENCEVERIFY"
+    URL: https://github.com/bitcoin/bips/blob/master/bip-0112.mediawiki
+  - id: BIP125
+    citation-label: BIP-125
+    title: "BIP-125: Opt-in Full Replace-by-Fee Signaling"
+    URL: https://github.com/bitcoin/bips/blob/master/bip-0125.mediawiki
+  - id: BIP141
+    citation-label: BIP-141
+    title: "BIP-141: Segregated Witness (Consensus layer)"
+    URL: https://github.com/bitcoin/bips/blob/master/bip-0141.mediawiki
 ---
 
 [For illustrative purposes only. This document is written in the style of a WG21
@@ -36,8 +59,9 @@ such as:
 
 These predicates are straightforward to derive from the public API, but their
 definitions depend on protocol constants and bit-field layouts specified by
-several BIPs. Standardizing these operations would provide a common
-specification and reduce duplicated, divergent implementations.
+several BIPs [@BIP65; @BIP68; @BIP112; @BIP125; @BIP141]. Standardizing these
+operations would provide a common specification and reduce duplicated,
+divergent implementations.
 
 ## In scope
 
@@ -79,10 +103,11 @@ semantics entirely in terms of the public interface.
 
 ## D3 — Transaction-version dependence of sequence-based predicates
 
-BIP-68 relative locktime is only active when the enclosing transaction's version
-is ≥ 2. `has_relative_locktime` as specified here reflects only the
-`tx_input`-level field condition (bit 31 clear, not final); enforcement of the
-transaction-version gate is consensus logic and out of scope.
+The relative locktime rules from [@BIP68] are only active when the enclosing
+transaction's version is ≥ 2. `has_relative_locktime` as specified here
+reflects only the `tx_input`-level field condition (bit 31 clear, not final);
+enforcement of the transaction-version gate is consensus logic and out of
+scope.
 
 # Proposed wording
 
@@ -149,8 +174,9 @@ namespace bitcoin {
 
 *Returns:* `i.sequence() < 0xFFFF'FFFEu`.
 
-*Remarks:* Reflects BIP-125 opt-in replace-by-fee signaling. An input opts in
-to RBF if its sequence number is less than `0xFFFFFFFE`.
+*Remarks:* Reflects the opt-in replace-by-fee signaling specified in
+[@BIP125]. An input opts in to RBF if its sequence number is less than
+`0xFFFFFFFE`.
 
 ```cpp
 [[nodiscard]] bool has_relative_locktime(const tx_input& i) noexcept;
@@ -158,7 +184,7 @@ to RBF if its sequence number is less than `0xFFFFFFFE`.
 
 *Returns:* `(i.sequence() & 0x8000'0000u) == 0 && i.sequence() != 0xFFFF'FFFFu`.
 
-*Remarks:* Reflects the BIP-68 relative lock-time enable flag (bit 31 clear,
+*Remarks:* Reflects the [@BIP68] relative lock-time enable flag (bit 31 clear,
 sequence not final). Whether the relative locktime is enforced depends on the
 enclosing transaction's version field (≥ 2 required); that check is consensus
 logic and not part of this predicate.
@@ -169,7 +195,8 @@ logic and not part of this predicate.
 [[nodiscard]] bool is_unspendable(const tx_output& o) noexcept;
 ```
 
-*Returns:* `!as_bytes(o.script()).empty() && as_bytes(o.script()).front() == std::byte{0x6a}`.
+*Returns:* `true` if `as_bytes(o.script())` is non-empty and its first
+ element is `std::byte{0x6a}`; otherwise `false`.
 
 *Remarks:* An output whose script begins with `OP_RETURN` (`0x6a`) is provably
 unspendable. Such outputs are commonly used to carry data.
@@ -180,7 +207,9 @@ unspendable. Such outputs are commonly used to carry data.
 [[nodiscard]] bool is_coinbase(const transaction& t) noexcept;
 ```
 
-*Returns:* `t.inputs().size() == 1 && is_coinbase(t.inputs().front().previous_output())`.
+*Returns:* `true` if `t.inputs().size() == 1` and
+`is_coinbase(t.inputs().front().previous_output())` are both `true`;
+otherwise `false`.
 
 ```cpp
 [[nodiscard]] bool is_segwit(const transaction& t) noexcept;
@@ -188,8 +217,9 @@ unspendable. Such outputs are commonly used to carry data.
 
 *Returns:* `true` if any element of `t.inputs()` has a non-empty `witness()`.
 
-*Remarks:* Reflects BIP-141 segregated witness. A transaction is considered
-SegWit if at least one of its inputs carries witness data.
+*Remarks:* Reflects segregated witness as specified by [@BIP141]. A
+transaction is considered SegWit if at least one of its inputs carries witness
+data.
 
 ```cpp
 [[nodiscard]] bool locktime_is_height(const transaction& t) noexcept;
@@ -200,8 +230,8 @@ SegWit if at least one of its inputs carries witness data.
 `locktime_is_time(t)` returns `t.locktime() >= 500'000'000`.
 
 *Remarks:* A locktime value below 500,000,000 is interpreted as a block height;
-a value at or above that threshold is a UNIX epoch timestamp in seconds (BIP-65,
-BIP-112).
+a value at or above that threshold is a UNIX epoch timestamp in seconds
+[@BIP65; @BIP112].
 
 ### [bitcoin.pred.block]
 
@@ -210,26 +240,3 @@ BIP-112).
 ```
 
 *Returns:* `!b.transactions().empty() && is_coinbase(b.transactions().front())`.
-
-# References
-
-- **BIP-65** — OP_CHECKLOCKTIMEVERIFY\
-  <https://github.com/bitcoin/bips/blob/master/bip-0065.mediawiki>
-
-- **BIP-68** — Relative lock-time using consensus-enforced sequence numbers\
-  <https://github.com/bitcoin/bips/blob/master/bip-0068.mediawiki>
-
-- **BIP-112** — CHECKSEQUENCEVERIFY\
-  <https://github.com/bitcoin/bips/blob/master/bip-0112.mediawiki>
-
-- **BIP-125** — Opt-in Full Replace-by-Fee Signaling\
-  <https://github.com/bitcoin/bips/blob/master/bip-0125.mediawiki>
-
-- **BIP-141** — Segregated Witness (Consensus layer)\
-  <https://github.com/bitcoin/bips/blob/master/bip-0141.mediawiki>
-
-- **Bitcoin Developer Reference**\
-  <https://developer.bitcoin.org/reference/>
-
-- **Bitcoin Core source** — `src/primitives/`\
-  <https://github.com/bitcoin/bitcoin>

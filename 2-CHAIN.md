@@ -6,6 +6,23 @@ audience:
   - Library Evolution Working Group
   - SG14 (Low-Latency / Financial)
 toc: false
+references:
+  - id: BIP34
+    citation-label: BIP-34
+    title: "BIP-34: Block v2, Height in Coinbase"
+    URL: https://github.com/bitcoin/bips/blob/master/bip-0034.mediawiki
+  - id: BIP65
+    citation-label: BIP-65
+    title: "BIP-65: OP_CHECKLOCKTIMEVERIFY"
+    URL: https://github.com/bitcoin/bips/blob/master/bip-0065.mediawiki
+  - id: BIP112
+    citation-label: BIP-112
+    title: "BIP-112: CHECKSEQUENCEVERIFY"
+    URL: https://github.com/bitcoin/bips/blob/master/bip-0112.mediawiki
+  - id: BitcoinCore
+    citation-label: Bitcoin Core
+    title: "Bitcoin Core source repository"
+    URL: https://github.com/bitcoin/bitcoin
 ---
 
 [For illustrative purposes only. This document is written in the style of a WG21
@@ -27,10 +44,10 @@ node-level functions that produce `chain` objects are outside scope.
 
 Bitcoin implementations must internally maintain a tree of candidate chain tips
 and reason about longest-chain selection, divergence points, and ancestor
-relationships. At library boundaries, the result of queries such as "what is
-the current best chain?" or "find the chain containing this block?" must be
-expressible in a common type, independent of any particular implementation's
-internal storage or indexing strategy.
+relationships [@BitcoinCore]. At library boundaries, the result of queries
+such as "what is the current best chain?" or "find the chain containing this
+block?" must be expressible in a common type, independent of any particular
+implementation's internal storage or indexing strategy.
 
 Today, C++ Bitcoin libraries generally return implementation-specific chain
 representations. Cross-library tools — chain comparison utilities, testing
@@ -69,8 +86,8 @@ A `chain` does not own the block headers it exposes. Implementations maintain
 block data in their own storage (on-disk databases, in-memory trees, flat
 files). `chain` is a lightweight handle — a view over that storage — intended
 to be inexpensive to copy and pass by value. This follows the same rationale as
-the *value-range*<T> return types in the vocabulary types paper, generalized to
-a first-class named type.
+the `$value-range$<T>`{.cpp} return types in the vocabulary types paper,
+generalized to a first-class named type.
 
 ## D2 — Use of `std::ranges::view_interface<chain>`
 
@@ -115,11 +132,11 @@ prefer the generic form may always use `std::ranges::mismatch(a, b)`.
 ## D5 — Named observer
 
 The height of a chain — the zero-based index of its tip block — is a
-fundamental domain concept referenced by BIP-34, BIP-65, BIP-112, and others.
-Although `height() == size() - 1` for any non-empty chain, exposing a named
-`height()` avoids repeated `size() - 1` expressions and makes the non-empty
-precondition explicit. `height()` follows the narrow-contract pattern used
-throughout these specifications.
+fundamental domain concept referenced by [@BIP34], [@BIP65], [@BIP112], and
+others. Although `height() == size() - 1` for any non-empty chain, exposing a
+named `height()` avoids repeated `size() - 1` expressions and makes the
+non-empty precondition explicit. `height()` follows the narrow-contract
+pattern used throughout these specifications.
 
 ## D6 — Construction
 
@@ -178,16 +195,15 @@ namespace bitcoin {
 
     chain() noexcept;
 
-    [[nodiscard]] iterator  begin() const noexcept;
-    [[nodiscard]] iterator  end()   const noexcept;
+    [[nodiscard]] iterator begin() const noexcept;
+    [[nodiscard]] iterator end() const noexcept;
 
     [[nodiscard]] std::size_t height() const noexcept;
 
     [[nodiscard]] std::pair<iterator, iterator>
-      mismatch(const chain& other)    const noexcept;
+      mismatch(const chain& other) const noexcept;
 
-    [[nodiscard]] bool
-      starts_with(const chain& prefix) const noexcept;
+    [[nodiscard]] bool starts_with(const chain& prefix) const noexcept;
   };
 
 } // namespace bitcoin
@@ -270,28 +286,31 @@ Two iterators are _compatible_ if they were both obtained from the same
 ```cpp
 class bitcoin::chain::iterator {
 public:
-  using difference_type  = std::ptrdiff_t;
-  using value_type       = bitcoin::block_header;
+  using difference_type = std::ptrdiff_t;
+  using value_type = bitcoin::block_header;
   using iterator_concept = std::random_access_iterator_tag;
 
   iterator() = default;
 
-  [[nodiscard]] bitcoin::block_header  operator*()                    const;
-  [[nodiscard]] /* unspecified */       operator->()                   const;
-  [[nodiscard]] bitcoin::block_header  operator[](difference_type n)  const;
+  [[nodiscard]] bitcoin::block_header operator*() const;
+  [[nodiscard]] /* $unspecified$ */ operator->() const;
+  [[nodiscard]] bitcoin::block_header operator[](difference_type n) const;
 
-  iterator& operator++();      iterator operator++(int);
-  iterator& operator--();      iterator operator--(int);
+  iterator& operator++();
+  iterator operator++(int);
+  iterator& operator--();
+  iterator operator--(int);
   iterator& operator+=(difference_type n);
   iterator& operator-=(difference_type n);
 
-  friend iterator        operator+(iterator it,    difference_type n);
-  friend iterator        operator+(difference_type n, iterator it);
-  friend iterator        operator-(iterator it,    difference_type n);
-  friend difference_type operator-(iterator lhs,   iterator rhs);
+  friend iterator operator+(iterator it, difference_type n);
+  friend iterator operator+(difference_type n, iterator it);
+  friend iterator operator-(iterator it, difference_type n);
+  friend difference_type operator-(iterator lhs, iterator rhs);
 
-  friend bool                 operator==(iterator lhs, iterator rhs)  noexcept;
-  friend std::strong_ordering operator<=>(iterator lhs, iterator rhs) noexcept;
+  friend bool operator==(iterator lhs, iterator rhs) noexcept;
+  friend std::strong_ordering operator<=>(iterator lhs, iterator rhs)
+    noexcept;
 };
 ```
 
@@ -306,7 +325,7 @@ public:
 *Returns:* The `bitcoin::block_header` at the position designated by `*this`.
 
 ```cpp
-[[nodiscard]] /* unspecified */ operator->() const;
+[[nodiscard]] /* $unspecified$ */ operator->() const;
 ```
 
 *Preconditions:* `*this` is dereferenceable.
@@ -371,7 +390,7 @@ iterator& operator-=(difference_type n);
 *Returns:* `*this`.
 
 ```cpp
-friend iterator operator+(iterator it,    difference_type n);
+friend iterator operator+(iterator it, difference_type n);
 friend iterator operator+(difference_type n, iterator it);
 ```
 
@@ -387,7 +406,8 @@ friend iterator operator-(iterator it, difference_type n);
 friend difference_type operator-(iterator lhs, iterator rhs);
 ```
 
-*Preconditions:* `lhs` and `rhs` are compatible ([bitcoin.chain.iterator.general]).
+*Preconditions:* `lhs` and `rhs` are compatible
+([bitcoin.chain.iterator.general]).
 
 *Returns:* The signed distance from `rhs` to `lhs`.
 
@@ -395,7 +415,8 @@ friend difference_type operator-(iterator lhs, iterator rhs);
 friend bool operator==(iterator lhs, iterator rhs) noexcept;
 ```
 
-*Preconditions:* `lhs` and `rhs` are compatible ([bitcoin.chain.iterator.general]).
+*Preconditions:* `lhs` and `rhs` are compatible
+([bitcoin.chain.iterator.general]).
 
 *Returns:* `true` if `lhs` and `rhs` designate the same position.
 
@@ -403,24 +424,8 @@ friend bool operator==(iterator lhs, iterator rhs) noexcept;
 friend std::strong_ordering operator<=>(iterator lhs, iterator rhs) noexcept;
 ```
 
-*Preconditions:* `lhs` and `rhs` are compatible ([bitcoin.chain.iterator.general]).
+*Preconditions:* `lhs` and `rhs` are compatible
+([bitcoin.chain.iterator.general]).
 
 *Returns:* The three-way comparison of the positions designated by `lhs` and
 `rhs`, where a position at lower height compares less.
-
-# References
-
-- **BIP-34** — Block v2; Height in Coinbase\
-  <https://github.com/bitcoin/bips/blob/master/bip-0034.mediawiki>
-
-- **BIP-65** — OP_CHECKLOCKTIMEVERIFY\
-  <https://github.com/bitcoin/bips/blob/master/bip-0065.mediawiki>
-
-- **BIP-112** — CHECKSEQUENCEVERIFY\
-  <https://github.com/bitcoin/bips/blob/master/bip-0112.mediawiki>
-
-- **Bitcoin Developer Reference** — Block chain\
-  <https://developer.bitcoin.org/reference/block_chain.html>
-
-- **Bitcoin Core source** — `src/chain.h`\
-  <https://github.com/bitcoin/bitcoin>

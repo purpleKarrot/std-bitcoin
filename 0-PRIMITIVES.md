@@ -6,6 +6,19 @@ audience:
   - Library Evolution Working Group
   - SG14 (Low-Latency / Financial)
 toc: false
+references:
+  - id: BIP141
+    citation-label: BIP-141
+    title: "BIP-141: Segregated Witness (Consensus layer)"
+    URL: https://github.com/bitcoin/bips/blob/master/bip-0141.mediawiki
+  - id: BIP144
+    citation-label: BIP-144
+    title: "BIP-144: Segregated Witness (Peer Services)"
+    URL: https://github.com/bitcoin/bips/blob/master/bip-0144.mediawiki
+  - id: BitcoinCore
+    citation-label: Bitcoin Core
+    title: "Bitcoin Core source repository"
+    URL: https://github.com/bitcoin/bitcoin
 ---
 
 [For illustrative purposes only. This document is written in the style of a WG21
@@ -53,7 +66,7 @@ wire-protocol types.
 # Impact on the Standard
 
 This is a pure library addition. It requires no core language changes. It
-depends on:
+depends on the quantities and units library proposed in [@P3045R8] and on:
 
 - `<array>`, `<concepts>`, `<cstddef>`, `<cstdint>`
 - `<compare>`, `<format>`, `<ranges>`, `<span>`, `<stdexcept>`
@@ -66,11 +79,12 @@ No existing names are modified or deprecated.
 
 `txid`, `wtxid`, `block_hash`, and `hash256` are all 32-byte digest values, but
 they must not be implicitly interconvertible. A function accepting a `txid` must
-not silently accept a `block_hash` or a `wtxid`. This rules out aliasing them to
-the same underlying type (for example, `using txid = std::array<std::byte, 32>`).
+not silently accept a `block_hash` or a `wtxid`. This rules out aliasing
+them to the same underlying type (for example,
+`using txid = std::array<std::byte, 32>`{.cpp}).
 The proposal models these as distinct specializations of an exposition-only
-template `basic-hash-id<Tag>`, producing separate, non-interconvertible types
-with identical storage representation.
+template `$basic-hash-id$<Tag>`{.cpp}, producing separate,
+non-interconvertible types with identical storage representation.
 
 ## D2 — Storage and display byte order
 
@@ -83,10 +97,10 @@ display representation.
 ## D3 — Distinct monetary type
 
 Bitcoin monetary values should not be confused with unrelated integers.
-`bitcoin::amount` is a `std::quantity` specialization with `std::int64_t`
-representation and `bitcoin::units::satoshi` as its reference unit. The type
-represents Bitcoin-denominated quantities; protocol-level constraints such as
-the valid money range are not imposed by the type itself.
+`bitcoin::amount` is a `std::quantity` specialization [@P3045R8] with
+`std::int64_t` representation and `bitcoin::units::satoshi` as its reference
+unit. The type represents Bitcoin-denominated quantities; protocol-level
+constraints such as the valid money range are not imposed by the type itself.
 
 ## D4 — Opaque script representation
 
@@ -99,17 +113,19 @@ view.
 
 Each `tx_input` exposes its witness data through a `witness()` observer
 returning an implementation-defined range of byte strings. An empty range
-indicates a non-SegWit input. The BIP-141 wire-format segregation of witness
-data to the end of the transaction is an encoding artifact and imposes no
-constraint on the vocabulary-level design. Implementations may store witness
-data with each input or in a separate parallel structure.
+indicates a non-SegWit input. The segregated-witness wire-format defined in
+[@BIP141] places witness data at the end of the transaction, but that is an
+encoding artifact and imposes no constraint on the vocabulary-level design.
+Implementations may store witness data with each input or in a separate
+parallel structure.
 
 ## D6 — Opaque class types
 
 All types are `class` with private data members and accessor-only public
 interfaces. Collection accessors return an unspecified type satisfying the
-*value-range*<T> named requirement (see D10) rather than `const std::vector<T>&`,
-permitting implementations to choose the backing representation.
+`$value-range$<T>`{.cpp} named requirement (see D10) rather than
+`const std::vector<T>&`, permitting implementations to choose the backing
+representation.
 
 ## D7 — Unit namespace
 
@@ -119,11 +135,12 @@ construction, conversion, and formatting through the quantity interface.
 
 ## D8 — Accessor naming
 
-Bitcoin Core uses the legacy terms `scriptSig` and `scriptPubKey` for the
-input authorization script and output locking script, respectively. The clearer
-alternatives are `input_script` and `output_script`; however, in the proposed
-interface, the owning classes `tx_input` and `tx_output` already supply that
-input/output context. The accessors are therefore simply named `script()`.
+Bitcoin Core [@BitcoinCore] uses the legacy terms `scriptSig` and
+`scriptPubKey` for the input authorization script and output locking script,
+respectively. The clearer alternatives are `input_script` and
+`output_script`; however, in the proposed interface, the owning classes
+`tx_input` and `tx_output` already supply that input/output context. The
+accessors are therefore simply named `script()`.
 
 ## D9 — ABI considerations
 
@@ -139,15 +156,15 @@ etc. — i.e. as direct members of `namespace bitcoin`.
 One exposition-only helper constrains return types of collection accessors in
 this paper. It is not part of the public API.
 
-*value-range*<T> is a **named requirement** for the unspecified return types of
-collection accessors. A type `R` satisfies *value-range*<T> if it models
-`std::ranges::view`, `std::ranges::sized_range`, and
-`std::ranges::random_access_range`, and `std::ranges::range_value_t<R>` is `T`.
-The reference type is implementation-defined: implementations may return
+`$value-range$<T>`{.cpp} is a **named requirement** for the unspecified return
+types of collection accessors. A type `R` satisfies `$value-range$<T>`{.cpp}
+if it models `std::ranges::view`, `std::ranges::sized_range`, and
+`std::ranges::random_access_range`, and `std::ranges::range_value_t<R>` is
+`T`. The reference type is implementation-defined: implementations may return
 `const T&` into stored elements or `T` by value for handle-based types. Each
 collection class exposes its return type as a named member typedef (e.g.
 `transaction::input_view`) whose concrete type is *implementation-defined* but
-must satisfy *value-range*<T>.
+must satisfy `$value-range$<T>`{.cpp}.
 
 # Proposed wording
 
@@ -173,17 +190,17 @@ for the Bitcoin wire protocol.
 namespace bitcoin {
 
   namespace units {
-    inline constexpr /* see [bitcoin.amount] */ satoshi;
-    inline constexpr /* see [bitcoin.amount] */ btc;
+    inline constexpr /* $see [bitcoin.amount]$ */ satoshi;
+    inline constexpr /* $see [bitcoin.amount]$ */ btc;
   }
 
   using amount = std::quantity<units::satoshi, std::int64_t>;
 
-  template<class Tag> class basic-hash-id; // exposition only
-  using hash256    = basic-hash-id</* unspecified */>;
-  using txid       = basic-hash-id</* unspecified */>;
-  using wtxid      = basic-hash-id</* unspecified */>;
-  using block_hash = basic-hash-id</* unspecified */>;
+  template<class Tag> class $basic-hash-id$; $// exposition only$
+  using hash256 = $basic-hash-id$</* $unspecified$ */>;
+  using txid = $basic-hash-id$</* $unspecified$ */>;
+  using wtxid = $basic-hash-id$</* $unspecified$ */>;
+  using block_hash = $basic-hash-id$</* $unspecified$ */>;
   class parse_error;
   class script;
   class outpoint;
@@ -195,10 +212,10 @@ namespace bitcoin {
 
 } // namespace bitcoin
 
-template<class Tag> struct std::formatter<bitcoin::basic-hash-id<Tag>>;
+template<class Tag> struct std::formatter<bitcoin::$basic-hash-id$<Tag>>;
 
-template<class Tag> struct std::hash<bitcoin::basic-hash-id<Tag>>;
-template<>         struct std::hash<bitcoin::outpoint>;
+template<class Tag> struct std::hash<bitcoin::$basic-hash-id$<Tag>>;
+template<> struct std::hash<bitcoin::outpoint>;
 ```
 
 ## [bitcoin.amount] Type `amount`
@@ -215,8 +232,8 @@ not impose protocol-level constraints such as the valid money range.
 namespace bitcoin {
 
   namespace units {
-    inline constexpr /*unit*/ satoshi;
-    inline constexpr /*unit*/ btc;
+    inline constexpr /* $unit$ */ satoshi;
+    inline constexpr /* $unit$ */ btc;
   }
 
   using amount = std::quantity<units::satoshi, std::int64_t>;
@@ -234,13 +251,13 @@ namespace bitcoin {
 
 ### [bitcoin.hashid.overview]
 
-`basic-hash-id` is an exposition-only class template. `hash256`
+`$basic-hash-id$`{.cpp} is an exposition-only class template. `hash256`
 ([bitcoin.hash256]), `txid` ([bitcoin.txid]), `wtxid` ([bitcoin.wtxid]),
 and `block_hash` ([bitcoin.block_hash]) are distinct specializations with
 unspecified tag types. Specializations with different tag types are
 unrelated types; comparisons between them are ill-formed.
 
-A default-constructed `basic-hash-id` holds all-zero bytes.
+A default-constructed `$basic-hash-id$`{.cpp} holds all-zero bytes.
 
 ### [bitcoin.hashid.syn] Synopsis
 
@@ -248,37 +265,44 @@ A default-constructed `basic-hash-id` holds all-zero bytes.
 namespace bitcoin {
 
   template<class Tag>
-  class basic-hash-id { // exposition only
+  class $basic-hash-id$ { $// exposition only$
   public:
-    constexpr basic-hash-id() noexcept;
-    constexpr explicit basic-hash-id(std::span<const std::byte, 32> bytes) noexcept;
+    constexpr $basic-hash-id$() noexcept;
+    constexpr explicit $basic-hash-id$(
+      std::span<const std::byte, 32> bytes) noexcept;
 
     [[nodiscard]] constexpr explicit operator bool() const noexcept;
 
-    friend constexpr std::span<const std::byte, 32> as_bytes(const basic-hash-id&)                        noexcept;
-    friend constexpr bool                           operator==(const basic-hash-id&, const basic-hash-id&) noexcept = default;
-    friend constexpr std::strong_ordering           operator<=>(const basic-hash-id&, const basic-hash-id&) noexcept = default;
+    friend constexpr std::span<const std::byte, 32>
+      as_bytes(const $basic-hash-id$&) noexcept;
+    friend constexpr bool operator==(
+      const $basic-hash-id$&,
+      const $basic-hash-id$&) noexcept = default;
+    friend constexpr std::strong_ordering operator<=>(
+      const $basic-hash-id$&,
+      const $basic-hash-id$&) noexcept = default;
 
   private:
-    std::array<std::byte, 32> value_; // exposition only
+    std::array<std::byte, 32> $value$; $// exposition only$
   };
 
 } // namespace bitcoin
 
-template<class Tag> struct std::formatter<bitcoin::basic-hash-id<Tag>>;
-template<class Tag> struct std::hash<bitcoin::basic-hash-id<Tag>>;
+template<class Tag> struct std::formatter<bitcoin::$basic-hash-id$<Tag>>;
+template<class Tag> struct std::hash<bitcoin::$basic-hash-id$<Tag>>;
 ```
 
 ### [bitcoin.hashid.cons] Constructors
 
 ```cpp
-constexpr basic-hash-id() noexcept;
+constexpr $basic-hash-id$() noexcept;
 ```
 
 *Postconditions:* `!*this` is `true`.
 
 ```cpp
-constexpr explicit basic-hash-id(std::span<const std::byte, 32> bytes) noexcept;
+constexpr explicit $basic-hash-id$(
+  std::span<const std::byte, 32> bytes) noexcept;
 ```
 
 *Effects:* Initializes the stored bytes by copying from `bytes`.
@@ -292,21 +316,22 @@ constexpr explicit basic-hash-id(std::span<const std::byte, 32> bytes) noexcept;
 *Returns:* `false` if all stored bytes are `std::byte{0}`, and `true` otherwise.
 
 ```cpp
-friend constexpr std::span<const std::byte, 32> as_bytes(const basic-hash-id& h) noexcept;
+friend constexpr std::span<const std::byte, 32>
+  as_bytes(const $basic-hash-id$& h) noexcept;
 ```
 
 *Returns:* A read-only view of the 32 wire-order bytes of `h`.
 
 ### [bitcoin.hashid.fmt] Formatter
 
-`std::formatter<bitcoin::basic-hash-id<Tag>>` formats a value as 64 lowercase
-hexadecimal digits in display byte order (bytes reversed relative to wire
-order), as used by block explorers.
+`std::formatter<bitcoin::$basic-hash-id$<Tag>>`{.cpp} formats a value as 64
+lowercase hexadecimal digits in display byte order (bytes reversed relative to
+wire order), as used by block explorers.
 
 ### [bitcoin.hashid.hash] Hash support
 
-`std::hash<bitcoin::basic-hash-id<Tag>>` is provided. The hash value is
-computed over the 32 wire-order bytes of the value.
+`std::hash<bitcoin::$basic-hash-id$<Tag>>`{.cpp} is provided. The hash value
+is computed over the 32 wire-order bytes of the value.
 
 ## [bitcoin.hash256] Type `hash256`
 
@@ -319,7 +344,7 @@ domain type applies — for example, the merkle root in a block header
 ```cpp
 namespace bitcoin {
 
-  using hash256 = basic-hash-id</* unspecified */>;
+  using hash256 = $basic-hash-id$</* $unspecified$ */>;
 
 } // namespace bitcoin
 ```
@@ -334,7 +359,7 @@ serialization.
 ```cpp
 namespace bitcoin {
 
-  using txid = basic-hash-id</* unspecified */>;
+  using txid = $basic-hash-id$</* $unspecified$ */>;
 
 } // namespace bitcoin
 ```
@@ -342,7 +367,7 @@ namespace bitcoin {
 ## [bitcoin.wtxid] Type `wtxid`
 
 `wtxid` is the SHA256d of the full transaction serialization including witness
-data, as defined by BIP-141. A `wtxid` and the `txid` of the same transaction
+data, as defined by [@BIP141]. A `wtxid` and the `txid` of the same transaction
 are equal only for transactions that carry no witness data.
 
 ### [bitcoin.wtxid.syn] Synopsis
@@ -350,7 +375,7 @@ are equal only for transactions that carry no witness data.
 ```cpp
 namespace bitcoin {
 
-  using wtxid = basic-hash-id</* unspecified */>;
+  using wtxid = $basic-hash-id$</* $unspecified$ */>;
 
 } // namespace bitcoin
 ```
@@ -364,7 +389,7 @@ namespace bitcoin {
 ```cpp
 namespace bitcoin {
 
-  using block_hash = basic-hash-id</* unspecified */>;
+  using block_hash = $basic-hash-id$</* $unspecified$ */>;
 
 } // namespace bitcoin
 ```
@@ -428,7 +453,8 @@ explicit script(std::span<const std::byte> b);
 ### [bitcoin.script.obs] Hidden friends
 
 ```cpp
-[[nodiscard]] friend std::span<const std::byte> as_bytes(const script& s) noexcept;
+[[nodiscard]] friend std::span<const std::byte>
+  as_bytes(const script& s) noexcept;
 ```
 
 *Returns:* A span over the stored byte sequence of `s`.
@@ -442,11 +468,13 @@ namespace bitcoin {
 
   class outpoint {
   public:
-    [[nodiscard]] bitcoin::txid txid()  const noexcept;
-    [[nodiscard]] std::size_t   index() const noexcept;
+    [[nodiscard]] bitcoin::txid txid() const noexcept;
+    [[nodiscard]] std::size_t index() const noexcept;
 
-    friend bool                 operator==(const outpoint& lhs, const outpoint& rhs) noexcept;
-    friend std::strong_ordering operator<=>(const outpoint& lhs, const outpoint& rhs) noexcept;
+    friend bool
+      operator==(const outpoint& lhs, const outpoint& rhs) noexcept;
+    friend std::strong_ordering
+      operator<=>(const outpoint& lhs, const outpoint& rhs) noexcept;
   };
 
 } // namespace bitcoin
@@ -463,8 +491,8 @@ implementation-defined manner consistent with `operator==`.
 ### [bitcoin.outpoint.obs] Observers
 
 ```cpp
-[[nodiscard]] bitcoin::txid txid()  const noexcept;
-[[nodiscard]] std::size_t   index() const noexcept;
+[[nodiscard]] bitcoin::txid txid() const noexcept;
+[[nodiscard]] std::size_t index() const noexcept;
 ```
 
 *Returns:* The `txid` of the transaction containing the referenced output, and
@@ -474,8 +502,8 @@ the output index within that transaction, respectively.
 
 ### [bitcoin.tx_input.overview]
 
-`witness_view` satisfies the *value-range*<`std::span<const std::byte>`> named
-requirement. Construction is implementation-defined.
+`witness_view` satisfies the `$value-range$<std::span<const std::byte>>`{.cpp}
+named requirement. Construction is implementation-defined.
 
 ### [bitcoin.tx_input.syn] Synopsis
 
@@ -484,12 +512,12 @@ namespace bitcoin {
 
   class tx_input {
   public:
-    using witness_view = /* see [bitcoin.tx_input.overview] */;
+    using witness_view = /* $see [bitcoin.tx_input.overview]$ */;
 
     [[nodiscard]] const bitcoin::outpoint& previous_output() const noexcept;
-    [[nodiscard]] const bitcoin::script&   script()          const noexcept;
-    [[nodiscard]] std::uint32_t            sequence()        const noexcept;
-    [[nodiscard]] witness_view             witness()         const noexcept;
+    [[nodiscard]] const bitcoin::script& script() const noexcept;
+    [[nodiscard]] std::uint32_t sequence() const noexcept;
+    [[nodiscard]] witness_view witness() const noexcept;
 
     friend bool operator==(const tx_input& lhs, const tx_input& rhs) noexcept;
   };
@@ -501,8 +529,8 @@ namespace bitcoin {
 
 ```cpp
 [[nodiscard]] const bitcoin::outpoint& previous_output() const noexcept;
-[[nodiscard]] const bitcoin::script&   script()          const noexcept;
-[[nodiscard]] std::uint32_t            sequence()        const noexcept;
+[[nodiscard]] const bitcoin::script& script() const noexcept;
+[[nodiscard]] std::uint32_t sequence() const noexcept;
 ```
 
 *Returns:* The previous output reference, input script, and sequence
@@ -525,10 +553,11 @@ namespace bitcoin {
 
   class tx_output {
   public:
-    [[nodiscard]] bitcoin::amount        value()  const noexcept;
+    [[nodiscard]] bitcoin::amount value() const noexcept;
     [[nodiscard]] const bitcoin::script& script() const noexcept;
 
-    friend bool operator==(const tx_output& lhs, const tx_output& rhs) noexcept;
+    friend bool operator==(const tx_output& lhs, const tx_output& rhs)
+      noexcept;
   };
 
 } // namespace bitcoin
@@ -537,8 +566,8 @@ namespace bitcoin {
 ### [bitcoin.tx_output.obs] Observers
 
 ```cpp
-[[nodiscard]] bitcoin::amount        value()         const noexcept;
-[[nodiscard]] const bitcoin::script& script()        const noexcept;
+[[nodiscard]] bitcoin::amount value() const noexcept;
+[[nodiscard]] const bitcoin::script& script() const noexcept;
 ```
 
 *Returns:* The stored output value and output script, respectively.
@@ -547,9 +576,9 @@ namespace bitcoin {
 
 ### [bitcoin.transaction.overview]
 
-`input_view` and `output_view` each satisfy the *value-range*<T> named
-requirement for their respective element types. Objects of type `transaction`
-may be default-constructed or deserialized from raw bytes
+`input_view` and `output_view` each satisfy the `$value-range$<T>`{.cpp}
+named requirement for their respective element types. Objects of type
+`transaction` may be default-constructed or deserialized from raw bytes
 ([bitcoin.transaction.cons]). All other construction is implementation-defined.
 
 ### [bitcoin.transaction.syn] Synopsis
@@ -559,20 +588,21 @@ namespace bitcoin {
 
   class transaction {
   public:
-    using input_view  = /* see [bitcoin.transaction.overview] */;
-    using output_view = /* see [bitcoin.transaction.overview] */;
+    using input_view = /* $see [bitcoin.transaction.overview]$ */;
+    using output_view = /* $see [bitcoin.transaction.overview]$ */;
 
     transaction() noexcept;
     explicit transaction(std::span<const std::byte> raw);
 
-    [[nodiscard]] bitcoin::txid  id()         const noexcept;
+    [[nodiscard]] bitcoin::txid id() const noexcept;
     [[nodiscard]] bitcoin::wtxid witness_id() const noexcept;
-    [[nodiscard]] std::int32_t   version()    const noexcept;
-    [[nodiscard]] std::uint32_t  locktime()   const noexcept;
-    [[nodiscard]] input_view     inputs()     const noexcept;
-    [[nodiscard]] output_view    outputs()    const noexcept;
+    [[nodiscard]] std::int32_t version() const noexcept;
+    [[nodiscard]] std::uint32_t locktime() const noexcept;
+    [[nodiscard]] input_view inputs() const noexcept;
+    [[nodiscard]] output_view outputs() const noexcept;
 
-    friend bool operator==(const transaction& lhs, const transaction& rhs) noexcept;
+    friend bool operator==(const transaction& lhs, const transaction& rhs)
+      noexcept;
   };
 
 } // namespace bitcoin
@@ -591,8 +621,8 @@ explicit transaction(std::span<const std::byte> raw);
 ```
 
 *Effects:* Initializes `*this` by deserializing the Bitcoin wire-format
-encoding in `raw`. Both the legacy format and the segwit extended format
-(BIP-141/BIP-144) are accepted.
+encoding in `raw`. Both the legacy format and the segregated-witness extended
+format defined by [@BIP141] and [@BIP144] are accepted.
 
 *Throws:* `bitcoin::parse_error` if `raw` does not contain a valid, complete
 wire-format encoding of exactly one transaction. In particular, `parse_error`
@@ -602,7 +632,7 @@ encoding.
 ### [bitcoin.transaction.obs] Observers
 
 ```cpp
-[[nodiscard]] bitcoin::txid  id()         const noexcept;
+[[nodiscard]] bitcoin::txid id() const noexcept;
 [[nodiscard]] bitcoin::wtxid witness_id() const noexcept;
 ```
 
@@ -614,14 +644,14 @@ when both are compared as `bitcoin::hash256` values. The return types remain
 distinct regardless.
 
 ```cpp
-[[nodiscard]] std::int32_t  version()  const noexcept;
+[[nodiscard]] std::int32_t version() const noexcept;
 [[nodiscard]] std::uint32_t locktime() const noexcept;
 ```
 
 *Returns:* The transaction version and locktime fields, respectively.
 
 ```cpp
-[[nodiscard]] input_view  inputs()  const noexcept;
+[[nodiscard]] input_view inputs() const noexcept;
 [[nodiscard]] output_view outputs() const noexcept;
 ```
 
@@ -636,15 +666,16 @@ namespace bitcoin {
 
   class block_header {
   public:
-    [[nodiscard]] bitcoin::block_hash      hash()            const noexcept;
-    [[nodiscard]] std::int32_t             version()         const noexcept;
-    [[nodiscard]] bitcoin::block_hash      prev_block_hash() const noexcept;
-    [[nodiscard]] bitcoin::hash256         merkle_root()     const noexcept;
-    [[nodiscard]] std::chrono::sys_seconds time()            const noexcept;
-    [[nodiscard]] std::uint32_t            bits()            const noexcept;
-    [[nodiscard]] std::uint32_t            nonce()           const noexcept;
+    [[nodiscard]] bitcoin::block_hash hash() const noexcept;
+    [[nodiscard]] std::int32_t version() const noexcept;
+    [[nodiscard]] bitcoin::block_hash prev_block_hash() const noexcept;
+    [[nodiscard]] bitcoin::hash256 merkle_root() const noexcept;
+    [[nodiscard]] std::chrono::sys_seconds time() const noexcept;
+    [[nodiscard]] std::uint32_t bits() const noexcept;
+    [[nodiscard]] std::uint32_t nonce() const noexcept;
 
-    friend bool operator==(const block_header& lhs, const block_header& rhs) noexcept;
+    friend bool operator==(const block_header& lhs, const block_header& rhs)
+      noexcept;
   };
 
 } // namespace bitcoin
@@ -653,13 +684,13 @@ namespace bitcoin {
 ### [bitcoin.block_header.obs] Observers
 
 ```cpp
-[[nodiscard]] bitcoin::block_hash      hash()            const noexcept;
-[[nodiscard]] std::int32_t             version()         const noexcept;
-[[nodiscard]] bitcoin::block_hash      prev_block_hash() const noexcept;
-[[nodiscard]] bitcoin::hash256         merkle_root()     const noexcept;
-[[nodiscard]] std::chrono::sys_seconds time()            const noexcept;
-[[nodiscard]] std::uint32_t            bits()            const noexcept;
-[[nodiscard]] std::uint32_t            nonce()           const noexcept;
+[[nodiscard]] bitcoin::block_hash hash() const noexcept;
+[[nodiscard]] std::int32_t version() const noexcept;
+[[nodiscard]] bitcoin::block_hash prev_block_hash() const noexcept;
+[[nodiscard]] bitcoin::hash256 merkle_root() const noexcept;
+[[nodiscard]] std::chrono::sys_seconds time() const noexcept;
+[[nodiscard]] std::uint32_t bits() const noexcept;
+[[nodiscard]] std::uint32_t nonce() const noexcept;
 ```
 
 *Returns:* `hash()` returns the SHA256d hash of the 80-byte serialized block
@@ -670,9 +701,9 @@ fields.
 
 ### [bitcoin.block.overview]
 
-`transaction_view` satisfies the *value-range*<`bitcoin::transaction`> named
-requirement. Objects of type `block` may be default-constructed or deserialized
-from raw bytes ([bitcoin.block.cons]). All other construction is
+`transaction_view` satisfies the `$value-range$<bitcoin::transaction>`{.cpp}
+named requirement. Objects of type `block` may be default-constructed or
+deserialized from raw bytes ([bitcoin.block.cons]). All other construction is
 implementation-defined.
 
 ### [bitcoin.block.syn] Synopsis
@@ -682,14 +713,14 @@ namespace bitcoin {
 
   class block {
   public:
-    using transaction_view = /* see [bitcoin.block.overview] */;
+    using transaction_view = /* $see [bitcoin.block.overview]$ */;
 
     block() noexcept;
     explicit block(std::span<const std::byte> raw);
 
-    [[nodiscard]] bitcoin::block_hash          hash()         const noexcept;
-    [[nodiscard]] const bitcoin::block_header& header()       const noexcept;
-    [[nodiscard]] transaction_view             transactions() const noexcept;
+    [[nodiscard]] bitcoin::block_hash hash() const noexcept;
+    [[nodiscard]] const bitcoin::block_header& header() const noexcept;
+    [[nodiscard]] transaction_view transactions() const noexcept;
 
     friend bool operator==(const block& lhs, const block& rhs) noexcept;
   };
@@ -738,15 +769,5 @@ encoding.
 ```
 
 *Returns:* A view of the transactions. By convention,
-`transactions().front()` is the coinbase transaction when the block is non-empty.
-
-# References
-
-- **BIP-141** — Segregated Witness (Consensus layer)\
-  <https://github.com/bitcoin/bips/blob/master/bip-0141.mediawiki>
-
-- **Bitcoin Developer Reference**\
-  <https://developer.bitcoin.org/reference/>
-
-- **Bitcoin Core source** — `src/primitives/`\
-  <https://github.com/bitcoin/bitcoin>
+`transactions().front()` is the coinbase transaction when the block is
+non-empty.
