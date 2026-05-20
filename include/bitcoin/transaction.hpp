@@ -68,7 +68,7 @@ public:
   [[nodiscard]] auto previous_output() const noexcept -> outpoint;
   [[nodiscard]] auto script() const noexcept -> script_ref;
   [[nodiscard]] auto sequence() const noexcept -> std::uint32_t;
-  [[nodiscard]] auto witness() const noexcept -> witness_view;
+  [[nodiscard]] auto witness() const -> witness_view;
 
   friend auto operator==(tx_input const& lhs, tx_input const& rhs) noexcept
     -> bool;
@@ -135,8 +135,8 @@ public:
 
   [[nodiscard]] auto version() const noexcept -> std::int32_t;
   [[nodiscard]] auto locktime() const noexcept -> std::uint32_t;
-  [[nodiscard]] auto inputs() const noexcept -> input_view;
-  [[nodiscard]] auto outputs() const noexcept -> output_view;
+  [[nodiscard]] auto inputs() const -> input_view;
+  [[nodiscard]] auto outputs() const -> output_view;
 
   friend auto operator==(transaction const& lhs,
                          transaction const& rhs) noexcept -> bool;

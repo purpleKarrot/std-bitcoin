@@ -5,17 +5,9 @@
 #include <cassert>
 #include <ranges>
 
+#include "detail.hpp"
 #include "primitives/transaction.h"
 #include "streams.h"
-
-namespace bitcoin::detail {
-
-struct transaction_data : CTransaction
-{
-  using CTransaction::CTransaction;
-};
-
-} // namespace bitcoin::detail
 
 namespace bitcoin {
 
@@ -42,7 +34,7 @@ auto tx_input::sequence() const noexcept -> std::uint32_t
   return _data->vin[_index].nSequence;
 }
 
-auto tx_input::witness() const noexcept -> witness_view
+auto tx_input::witness() const -> witness_view
 {
   assert(_data != nullptr);
   assert(_index < _data->vin.size());
@@ -127,7 +119,7 @@ auto transaction::locktime() const noexcept -> std::uint32_t
   return _data->nLockTime;
 }
 
-auto transaction::inputs() const noexcept -> input_view
+auto transaction::inputs() const -> input_view
 {
   assert(_data != nullptr);
   auto indices = std::views::iota(std::size_t{0}, _data->vin.size());
@@ -136,7 +128,7 @@ auto transaction::inputs() const noexcept -> input_view
   });
 }
 
-auto transaction::outputs() const noexcept -> output_view
+auto transaction::outputs() const -> output_view
 {
   assert(_data != nullptr);
   auto indices = std::views::iota(std::size_t{0}, _data->vout.size());

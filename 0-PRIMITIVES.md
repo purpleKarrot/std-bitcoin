@@ -610,7 +610,7 @@ namespace bitcoin {
     [[nodiscard]] bitcoin::outpoint previous_output() const noexcept;
     [[nodiscard]] bitcoin::script_ref script() const noexcept;
     [[nodiscard]] std::uint32_t sequence() const noexcept;
-    [[nodiscard]] witness_view witness() const noexcept;
+    [[nodiscard]] witness_view witness() const;
 
     friend bool operator==(const tx_input& lhs, const tx_input& rhs) noexcept;
   };
@@ -630,7 +630,7 @@ namespace bitcoin {
 input script, and the sequence number, respectively.
 
 ```cpp
-[[nodiscard]] witness_view witness() const noexcept;
+[[nodiscard]] witness_view witness() const;
 ```
 
 *Returns:* A view of the witness items for this input. Each element is a
@@ -686,14 +686,14 @@ namespace bitcoin {
     using input_view = /* $see [bitcoin.transaction.overview]$ */;
     using output_view = /* $see [bitcoin.transaction.overview]$ */;
 
-    transaction() noexcept;
+    transaction();
 
     [[nodiscard]] bitcoin::txid id() const noexcept;
     [[nodiscard]] bitcoin::wtxid witness_id() const noexcept;
     [[nodiscard]] std::int32_t version() const noexcept;
     [[nodiscard]] std::uint32_t locktime() const noexcept;
-    [[nodiscard]] input_view inputs() const noexcept;
-    [[nodiscard]] output_view outputs() const noexcept;
+    [[nodiscard]] input_view inputs() const;
+    [[nodiscard]] output_view outputs() const;
 
     friend bool operator==(const transaction& lhs, const transaction& rhs)
       noexcept;
@@ -705,7 +705,7 @@ namespace bitcoin {
 ### [bitcoin.transaction.cons] Constructors
 
 ```cpp
-transaction() noexcept;
+transaction();
 ```
 
 *Postconditions:* `inputs().empty()` and `outputs().empty()`.
@@ -732,8 +732,8 @@ distinct regardless.
 *Returns:* The transaction version and locktime fields, respectively.
 
 ```cpp
-[[nodiscard]] input_view inputs() const noexcept;
-[[nodiscard]] output_view outputs() const noexcept;
+[[nodiscard]] input_view inputs() const;
+[[nodiscard]] output_view outputs() const;
 ```
 
 *Returns:* Views of the inputs and outputs, respectively.
@@ -796,11 +796,11 @@ namespace bitcoin {
   public:
     using transaction_view = /* $see [bitcoin.block.overview]$ */;
 
-    block() noexcept;
+    block();
 
     [[nodiscard]] bitcoin::block_hash hash() const noexcept;
     [[nodiscard]] const bitcoin::block_header& header() const noexcept;
-    [[nodiscard]] transaction_view transactions() const noexcept;
+    [[nodiscard]] transaction_view transactions() const;
 
     friend bool operator==(const block& lhs, const block& rhs) noexcept;
   };
@@ -811,7 +811,7 @@ namespace bitcoin {
 ### [bitcoin.block.cons] Constructors
 
 ```cpp
-block() noexcept;
+block();
 ```
 
 *Postconditions:* `transactions().empty()`.
@@ -831,7 +831,7 @@ block() noexcept;
 *Returns:* The block header.
 
 ```cpp
-[[nodiscard]] transaction_view transactions() const noexcept;
+[[nodiscard]] transaction_view transactions() const;
 ```
 
 *Returns:* A view of the transactions. By convention,

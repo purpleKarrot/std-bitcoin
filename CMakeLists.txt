@@ -69,12 +69,17 @@ target_sources(stdbtc
     include/bitcoin/detail/basic_hash_id.hpp
     include/bitcoin/serialization/byte_sink.hpp
     include/bitcoin/amount.hpp
+    include/bitcoin/block.hpp
+    include/bitcoin/block_header.hpp
     include/bitcoin/hash_id.hpp
+    include/bitcoin/predicates.hpp
     include/bitcoin/script.hpp
     include/bitcoin/transaction.hpp
   PRIVATE
     src/amount.cpp
     src/basic_hash_id.cpp
+    src/block.cpp
+    src/block_header.cpp
     src/script.cpp
     src/transaction.cpp
   )

@@ -139,13 +139,13 @@ namespace bitcoin {
   [[nodiscard]] bool is_unspendable(const tx_output& o)       noexcept;
 
   // [bitcoin.pred.transaction]
-  [[nodiscard]] bool is_coinbase(const transaction& t)        noexcept;
-  [[nodiscard]] bool is_segwit(const transaction& t)          noexcept;
+  [[nodiscard]] bool is_coinbase(const transaction& t);
+  [[nodiscard]] bool is_segwit(const transaction& t);
   [[nodiscard]] bool locktime_is_height(const transaction& t) noexcept;
   [[nodiscard]] bool locktime_is_time(const transaction& t)   noexcept;
 
   // [bitcoin.pred.block]
-  [[nodiscard]] bool has_coinbase(const block& b) noexcept;
+  [[nodiscard]] bool has_coinbase(const block& b);
 
 } // namespace bitcoin
 ```
@@ -156,7 +156,7 @@ namespace bitcoin {
 [[nodiscard]] bool is_coinbase(const txid& t) noexcept;
 ```
 
-*Returns:* `t.is_null()`.
+*Returns:* `!static_cast<bool>(t)`.
 
 ### [bitcoin.pred.outpoint]
 
@@ -204,7 +204,7 @@ unspendable. Such outputs are commonly used to carry data.
 ### [bitcoin.pred.transaction]
 
 ```cpp
-[[nodiscard]] bool is_coinbase(const transaction& t) noexcept;
+[[nodiscard]] bool is_coinbase(const transaction& t);
 ```
 
 *Returns:* `true` if `t.inputs().size() == 1` and
@@ -212,7 +212,7 @@ unspendable. Such outputs are commonly used to carry data.
 otherwise `false`.
 
 ```cpp
-[[nodiscard]] bool is_segwit(const transaction& t) noexcept;
+[[nodiscard]] bool is_segwit(const transaction& t);
 ```
 
 *Returns:* `true` if any element of `t.inputs()` has a non-empty `witness()`.
@@ -236,7 +236,7 @@ a value at or above that threshold is a UNIX epoch timestamp in seconds
 ### [bitcoin.pred.block]
 
 ```cpp
-[[nodiscard]] bool has_coinbase(const block& b) noexcept;
+[[nodiscard]] bool has_coinbase(const block& b);
 ```
 
 *Returns:* `!b.transactions().empty() && is_coinbase(b.transactions().front())`.
