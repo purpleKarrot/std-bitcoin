@@ -11,10 +11,6 @@ references:
     citation-label: BIP-141
     title: "BIP-141: Segregated Witness (Consensus layer)"
     URL: https://github.com/bitcoin/bips/blob/master/bip-0141.mediawiki
-  - id: BIP144
-    citation-label: BIP-144
-    title: "BIP-144: Segregated Witness (Peer Services)"
-    URL: https://github.com/bitcoin/bips/blob/master/bip-0144.mediawiki
   - id: BitcoinCore
     citation-label: Bitcoin Core
     title: "Bitcoin Core source repository"
@@ -31,7 +27,8 @@ This paper proposes adding a set of vocabulary types for the Bitcoin protocol to
 the C++ Standard Library under the header `<bitcoin>`. These types live in
 `namespace bitcoin`. The proposed facility provides zero-overhead, strongly
 typed vocabulary types intended to improve interoperability among independently
-developed libraries.
+developed libraries. Wire-format parsing and serialization are intentionally
+specified separately.
 
 # Motivation and Scope
 
@@ -62,6 +59,7 @@ wire-protocol types.
 - Networking / P2P protocol
 - Wallet key derivation (BIP-32, BIP-39)
 - Consensus validation logic
+- Transaction, block-header, and block wire-format parsing and serialization
 
 # Impact on the Standard
 
@@ -217,7 +215,7 @@ namespace bitcoin {
   using txid = $basic-hash-id$</* $unspecified$ */>;
   using wtxid = $basic-hash-id$</* $unspecified$ */>;
   using block_hash = $basic-hash-id$</* $unspecified$ */>;
-  class parse_error;
+
   class script;
   class script_ref;
   class outpoint;
@@ -410,25 +408,6 @@ namespace bitcoin {
 
 } // namespace bitcoin
 ```
-
-## [bitcoin.parse_error] Class `parse_error`
-
-### [bitcoin.parse_error.syn] Synopsis
-
-```cpp
-namespace bitcoin {
-
-  class parse_error : public std::runtime_error {
-  public:
-    using std::runtime_error::runtime_error;
-  };
-
-} // namespace bitcoin
-```
-
-`parse_error` is thrown by the deserializing constructors of `transaction`
-([bitcoin.transaction.cons]) and `block` ([bitcoin.block.cons]) when `raw`
-does not contain a valid, complete wire-format encoding.
 
 ## [bitcoin.script] Class `script`
 
@@ -628,7 +607,7 @@ namespace bitcoin {
   public:
     using witness_view = /* $see [bitcoin.tx_input.overview]$ */;
 
-    [[nodiscard]] const bitcoin::outpoint& previous_output() const noexcept;
+    [[nodiscard]] bitcoin::outpoint previous_output() const noexcept;
     [[nodiscard]] bitcoin::script_ref script() const noexcept;
     [[nodiscard]] std::uint32_t sequence() const noexcept;
     [[nodiscard]] witness_view witness() const noexcept;
@@ -642,13 +621,13 @@ namespace bitcoin {
 ### [bitcoin.tx_input.obs] Observers
 
 ```cpp
-[[nodiscard]] const bitcoin::outpoint& previous_output() const noexcept;
+[[nodiscard]] bitcoin::outpoint previous_output() const noexcept;
 [[nodiscard]] bitcoin::script_ref script() const noexcept;
 [[nodiscard]] std::uint32_t sequence() const noexcept;
 ```
 
-*Returns:* The previous output reference, a non-owning `script_ref`
-referring to the input script, and the sequence number, respectively.
+*Returns:* The previous output, a non-owning `script_ref` referring to the
+input script, and the sequence number, respectively.
 
 ```cpp
 [[nodiscard]] witness_view witness() const noexcept;
@@ -693,8 +672,9 @@ referring to the output script, respectively.
 
 `input_view` and `output_view` each satisfy the `$value-range$<T>`{.cpp}
 named requirement for their respective element types. Objects of type
-`transaction` may be default-constructed or deserialized from raw bytes
-([bitcoin.transaction.cons]). All other construction is implementation-defined.
+`transaction` may be default-constructed. All other construction is
+implementation-defined. Wire-format parsing and serialization are specified
+separately.
 
 ### [bitcoin.transaction.syn] Synopsis
 
@@ -707,7 +687,6 @@ namespace bitcoin {
     using output_view = /* $see [bitcoin.transaction.overview]$ */;
 
     transaction() noexcept;
-    explicit transaction(std::span<const std::byte> raw);
 
     [[nodiscard]] bitcoin::txid id() const noexcept;
     [[nodiscard]] bitcoin::wtxid witness_id() const noexcept;
@@ -730,19 +709,6 @@ transaction() noexcept;
 ```
 
 *Postconditions:* `inputs().empty()` and `outputs().empty()`.
-
-```cpp
-explicit transaction(std::span<const std::byte> raw);
-```
-
-*Effects:* Initializes `*this` by deserializing the Bitcoin wire-format
-encoding in `raw`. Both the legacy format and the segregated-witness extended
-format defined by [@BIP141] and [@BIP144] are accepted.
-
-*Throws:* `bitcoin::parse_error` if `raw` does not contain a valid, complete
-wire-format encoding of exactly one transaction. In particular, `parse_error`
-is thrown if `raw` is truncated or if `raw` contains trailing bytes beyond the
-encoding.
 
 ### [bitcoin.transaction.obs] Observers
 
@@ -817,9 +783,9 @@ fields.
 ### [bitcoin.block.overview]
 
 `transaction_view` satisfies the `$value-range$<bitcoin::transaction>`{.cpp}
-named requirement. Objects of type `block` may be default-constructed or
-deserialized from raw bytes ([bitcoin.block.cons]). All other construction is
-implementation-defined.
+named requirement. Objects of type `block` may be default-constructed. All
+other construction is implementation-defined. Wire-format parsing and
+serialization are specified separately.
 
 ### [bitcoin.block.syn] Synopsis
 
@@ -831,7 +797,6 @@ namespace bitcoin {
     using transaction_view = /* $see [bitcoin.block.overview]$ */;
 
     block() noexcept;
-    explicit block(std::span<const std::byte> raw);
 
     [[nodiscard]] bitcoin::block_hash hash() const noexcept;
     [[nodiscard]] const bitcoin::block_header& header() const noexcept;
@@ -850,20 +815,6 @@ block() noexcept;
 ```
 
 *Postconditions:* `transactions().empty()`.
-
-```cpp
-explicit block(std::span<const std::byte> raw);
-```
-
-*Effects:* Initializes `*this` by deserializing the Bitcoin wire-format
-encoding in `raw`. The format is an 80-byte block header followed by a
-variable-length integer encoding the transaction count, followed by the
-serialized transactions in order.
-
-*Throws:* `bitcoin::parse_error` if `raw` does not contain a valid, complete
-wire-format encoding of exactly one block. In particular, `parse_error` is
-thrown if `raw` is truncated or if `raw` contains trailing bytes beyond the
-encoding.
 
 ### [bitcoin.block.obs] Observers
 

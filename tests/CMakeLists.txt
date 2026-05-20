@@ -10,6 +10,7 @@ add_executable(stdbtc-tests
   amount.cpp
   hash_id.cpp
   script.cpp
+  transaction.cpp
   )
 
 target_link_libraries(stdbtc-tests PRIVATE
