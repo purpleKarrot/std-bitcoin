@@ -9,6 +9,7 @@ FetchContent_MakeAvailable(doctest)
 add_executable(stdbtc-tests
   amount.cpp
   hash_id.cpp
+  script.cpp
   )
 
 target_link_libraries(stdbtc-tests PRIVATE

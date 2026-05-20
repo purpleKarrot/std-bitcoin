@@ -28,9 +28,11 @@ target_sources(stdbtc
     include/bitcoin/detail/basic_hash_id.hpp
     include/bitcoin/amount.hpp
     include/bitcoin/hash_id.hpp
+    include/bitcoin/script.hpp
   PRIVATE
     src/amount.cpp
     src/basic_hash_id.cpp
+    src/script.cpp
   )
 
 add_subdirectory(tests)

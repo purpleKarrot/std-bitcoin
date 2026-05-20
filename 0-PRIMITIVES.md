@@ -102,14 +102,30 @@ Bitcoin monetary values should not be confused with unrelated integers.
 unit. The type represents Bitcoin-denominated quantities; protocol-level
 constraints such as the valid money range are not imposed by the type itself.
 
-## D4 — Opaque script representation
+## D4 — Owning and non-owning opaque script types
 
 Pattern-matching for `P2PKH`, `P2TR`, opcode enumeration, and script execution
-belong to a higher-level facility (not proposed here). At vocabulary level
-`script` is an opaque container exposing only a `std::span<const std::byte>`
-view.
+belong to a higher-level facility (not proposed here). At vocabulary level the
+paper provides two opaque script types: owning `script` and non-owning
+`script_ref`. Their public observation surface is limited to `empty()` and a
+`std::span<const std::byte>` view of the serialized script bytes.
 
-## D5 — Witness association with inputs
+Providing both types permits accessors such as `tx_input::script()` and
+`tx_output::script()` to return a script by value without requiring the
+implementation to store a `script` subobject internally or to allocate and
+copy on every access. An implementation may therefore store a script directly,
+store offsets into transaction backing storage, or use any other
+representation consistent with the specified observers.
+
+## D5 — No `size()` observer for script types
+
+A script has at least two natural notions of size: serialized byte count and,
+in a future decoding facility, instruction count. An unqualified `size()`
+observer would therefore obscure the unit being measured. The byte count is
+obtainable as `as_bytes(s).size()`. Any future instruction-level facility can
+expose its own size in terms appropriate to that view.
+
+## D6 — Witness association with inputs
 
 Each `tx_input` exposes its witness data through a `witness()` observer
 returning an implementation-defined range of byte strings. An empty range
@@ -119,21 +135,21 @@ encoding artifact and imposes no constraint on the vocabulary-level design.
 Implementations may store witness data with each input or in a separate
 parallel structure.
 
-## D6 — Opaque class types
+## D7 — Opaque class types
 
 All types are `class` with private data members and accessor-only public
 interfaces. Collection accessors return an unspecified type satisfying the
-`$value-range$<T>`{.cpp} named requirement (see D10) rather than
+`$value-range$<T>`{.cpp} named requirement (see D11) rather than
 `const std::vector<T>&`, permitting implementations to choose the backing
 representation.
 
-## D7 — Unit namespace
+## D8 — Unit namespace
 
 The sub-namespace `bitcoin::units` contains the monetary unit constants
 `satoshi` and `btc`. Exposing them as ordinary unit objects permits
 construction, conversion, and formatting through the quantity interface.
 
-## D8 — Accessor naming
+## D9 — Accessor naming
 
 Bitcoin Core [@BitcoinCore] uses the legacy terms `scriptSig` and
 `scriptPubKey` for the input authorization script and output locking script,
@@ -142,7 +158,7 @@ respectively. The clearer alternatives are `input_script` and
 `tx_input` and `tx_output` already supply that input/output context. The
 accessors are therefore simply named `script()`.
 
-## D9 — ABI considerations
+## D10 — ABI considerations
 
 This paper does not mandate any particular ABI versioning scheme. Whether to
 use per-type `inline namespace` versioning (e.g. `inline namespace
@@ -151,7 +167,7 @@ versioning at all is an implementer's choice. The paper requires only that all
 types and constants are accessible as `bitcoin::hash256`, `bitcoin::amount`,
 etc. — i.e. as direct members of `namespace bitcoin`.
 
-## D10 — Exposition-only range helper
+## D11 — Exposition-only range helper
 
 One exposition-only helper constrains return types of collection accessors in
 this paper. It is not part of the public API.
@@ -203,6 +219,7 @@ namespace bitcoin {
   using block_hash = $basic-hash-id$</* $unspecified$ */>;
   class parse_error;
   class script;
+  class script_ref;
   class outpoint;
   class tx_input;
   class tx_output;
@@ -420,10 +437,15 @@ does not contain a valid, complete wire-format encoding.
 ```cpp
 namespace bitcoin {
 
+  class script_ref;
+
   class script {
   public:
     script() noexcept;
     explicit script(std::span<const std::byte> b);
+    explicit script(script_ref s);
+
+    [[nodiscard]] bool empty() const noexcept;
 
     friend std::span<const std::byte> as_bytes(const script& s) noexcept;
     friend bool operator==(const script& lhs, const script& rhs) noexcept;
@@ -438,7 +460,7 @@ namespace bitcoin {
 script() noexcept;
 ```
 
-*Postconditions:* `as_bytes(*this).empty()` is `true`.
+*Postconditions:* `empty()` is `true`.
 
 ```cpp
 explicit script(std::span<const std::byte> b);
@@ -450,7 +472,19 @@ explicit script(std::span<const std::byte> b);
 
 *Throws:* `std::length_error` if `b.size() > 10'000`.
 
-### [bitcoin.script.obs] Hidden friends
+```cpp
+explicit script(script_ref s);
+```
+
+*Effects:* Initializes the stored byte sequence by copying from `as_bytes(s)`.
+
+### [bitcoin.script.obs] Observers and hidden friends
+
+```cpp
+[[nodiscard]] bool empty() const noexcept;
+```
+
+*Returns:* `as_bytes(*this).empty()`.
 
 ```cpp
 [[nodiscard]] friend std::span<const std::byte>
@@ -458,6 +492,86 @@ explicit script(std::span<const std::byte> b);
 ```
 
 *Returns:* A span over the stored byte sequence of `s`.
+
+```cpp
+friend bool operator==(const script& lhs, const script& rhs) noexcept;
+```
+
+*Returns:* `true` if `as_bytes(lhs)` and `as_bytes(rhs)` compare equal
+ element-wise; otherwise `false`.
+
+## [bitcoin.script.ref] Class `script_ref`
+
+### [bitcoin.script.ref.syn] Synopsis
+
+```cpp
+namespace bitcoin {
+
+  class script;
+
+  class script_ref {
+  public:
+    script_ref() noexcept;
+    explicit script_ref(std::span<const std::byte> b) noexcept;
+    script_ref(const script& s) noexcept;
+    script_ref(script&&) = delete;
+    script_ref(const script&&) = delete;
+
+    [[nodiscard]] bool empty() const noexcept;
+
+    friend std::span<const std::byte> as_bytes(script_ref s) noexcept;
+    friend bool operator==(script_ref lhs, script_ref rhs) noexcept;
+  };
+
+} // namespace bitcoin
+```
+
+### [bitcoin.script.ref.cons] Constructors
+
+```cpp
+script_ref() noexcept;
+```
+
+*Postconditions:* `empty()` is `true`.
+
+```cpp
+explicit script_ref(std::span<const std::byte> b) noexcept;
+```
+
+*Preconditions:* `b.size() <= 10'000`.
+
+*Effects:* Initializes the referenced byte sequence to `b`.
+
+```cpp
+script_ref(const script& s) noexcept;
+```
+
+*Effects:* Initializes the referenced byte sequence to `as_bytes(s)`.
+
+*Remarks:* The deleted rvalue constructor overloads prevent `script_ref`
+from binding to a temporary `script`.
+
+### [bitcoin.script.ref.obs] Observers and hidden friends
+
+```cpp
+[[nodiscard]] bool empty() const noexcept;
+```
+
+*Returns:* `as_bytes(*this).empty()`.
+
+```cpp
+[[nodiscard]] friend std::span<const std::byte>
+  as_bytes(script_ref s) noexcept;
+```
+
+*Returns:* A span over the referenced byte sequence of `s`.
+
+```cpp
+friend bool operator==(script_ref lhs, script_ref rhs) noexcept;
+```
+
+*Returns:* `true` if `as_bytes(lhs)` and `as_bytes(rhs)` compare equal
+ element-wise; otherwise `false`.
 
 ## [bitcoin.outpoint] Class `outpoint`
 
@@ -515,7 +629,7 @@ namespace bitcoin {
     using witness_view = /* $see [bitcoin.tx_input.overview]$ */;
 
     [[nodiscard]] const bitcoin::outpoint& previous_output() const noexcept;
-    [[nodiscard]] const bitcoin::script& script() const noexcept;
+    [[nodiscard]] bitcoin::script_ref script() const noexcept;
     [[nodiscard]] std::uint32_t sequence() const noexcept;
     [[nodiscard]] witness_view witness() const noexcept;
 
@@ -529,12 +643,12 @@ namespace bitcoin {
 
 ```cpp
 [[nodiscard]] const bitcoin::outpoint& previous_output() const noexcept;
-[[nodiscard]] const bitcoin::script& script() const noexcept;
+[[nodiscard]] bitcoin::script_ref script() const noexcept;
 [[nodiscard]] std::uint32_t sequence() const noexcept;
 ```
 
-*Returns:* The previous output reference, input script, and sequence
-number, respectively.
+*Returns:* The previous output reference, a non-owning `script_ref`
+referring to the input script, and the sequence number, respectively.
 
 ```cpp
 [[nodiscard]] witness_view witness() const noexcept;
@@ -554,7 +668,7 @@ namespace bitcoin {
   class tx_output {
   public:
     [[nodiscard]] bitcoin::amount value() const noexcept;
-    [[nodiscard]] const bitcoin::script& script() const noexcept;
+    [[nodiscard]] bitcoin::script_ref script() const noexcept;
 
     friend bool operator==(const tx_output& lhs, const tx_output& rhs)
       noexcept;
@@ -567,10 +681,11 @@ namespace bitcoin {
 
 ```cpp
 [[nodiscard]] bitcoin::amount value() const noexcept;
-[[nodiscard]] const bitcoin::script& script() const noexcept;
+[[nodiscard]] bitcoin::script_ref script() const noexcept;
 ```
 
-*Returns:* The stored output value and output script, respectively.
+*Returns:* The stored output value and a non-owning `script_ref`
+referring to the output script, respectively.
 
 ## [bitcoin.transaction] Class `transaction`
 
