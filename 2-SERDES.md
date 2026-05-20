@@ -1,5 +1,5 @@
 ---
-title: Bitcoin Wire-Format Parsing and Serialization
+title: "Bitcoin Wire Formats: Parsing and Serialization"
 date: today
 document: DXXXXR0
 audience:

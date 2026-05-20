@@ -66,11 +66,16 @@ target_include_directories(stdbtc PRIVATE ${BitcoinCore_SOURCE_DIR}/src)
 
 target_sources(stdbtc
   PUBLIC FILE_SET HEADERS BASE_DIRS include FILES
+    include/bitcoin/detail/arrow_proxy.hpp
     include/bitcoin/detail/basic_hash_id.hpp
+    include/bitcoin/detail/chain_erasure.hpp
+    include/bitcoin/detail/erasure.hpp
+    include/bitcoin/detail/iterator.hpp
     include/bitcoin/serialization/byte_sink.hpp
     include/bitcoin/amount.hpp
     include/bitcoin/block.hpp
     include/bitcoin/block_header.hpp
+    include/bitcoin/chain.hpp
     include/bitcoin/hash_id.hpp
     include/bitcoin/predicates.hpp
     include/bitcoin/script.hpp
@@ -80,6 +85,7 @@ target_sources(stdbtc
     src/basic_hash_id.cpp
     src/block.cpp
     src/block_header.cpp
+    src/chain.cpp
     src/script.cpp
     src/transaction.cpp
   )

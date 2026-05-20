@@ -1,5 +1,5 @@
 ---
-title: Adding a Bitcoin Chain View Type to the C++ Standard Library
+title: "Bitcoin Chains: `chain` and `any_chain`"
 date: today
 document: DXXXXR0
 audience:
@@ -31,14 +31,16 @@ not under active consideration for standardization.]{.draftnote}
 
 # Abstract
 
-This paper proposes adding `bitcoin::chain` to the C++ Standard Library under
-the header `<bitcoin>`. A `chain` is a random-access view of the sequence of
-`bitcoin::block_header` values on the path from the genesis block to a
-particular tip. It models `std::ranges::random_access_range` and
-`std::ranges::view`, and provides member operations `mismatch` and
+This paper proposes adding the concept `bitcoin::chain` and the type-erased
+wrapper `bitcoin::any_chain` to the C++ Standard Library under the header
+`<bitcoin>`. A type models `chain` if it is a random-access, sized view of the
+sequence of `bitcoin::block_header` values on the path from the genesis block
+to a particular tip. `any_chain` models `std::ranges::random_access_range`,
+`std::ranges::sized_range`, and `std::ranges::view`, and provides member
+operations `mismatch` and
 `starts_with` for comparing chain prefixes and identifying divergence points
-between competing chain tips. This paper specifies the type itself; the
-node-level functions that produce `chain` objects are outside scope.
+between competing chain tips. This paper specifies the concept and wrapper;
+the node-level functions that produce chain objects are outside scope.
 
 # Motivation and Scope
 
@@ -52,18 +54,21 @@ implementation's internal storage or indexing strategy.
 Today, C++ Bitcoin libraries generally return implementation-specific chain
 representations. Cross-library tools — chain comparison utilities, testing
 harnesses, analysis scripts — therefore require per-library adapters. A common
-`chain` type would improve interoperability in the same way that a common
-`block_header` type reduces the need for representation-specific adaptation.
+`chain` concept and an associated `any_chain` wrapper would improve
+interoperability in the same way that a common `block_header` type reduces the
+need for representation-specific adaptation.
 
 ## In scope
 
-- `bitcoin::chain` — a random-access view of the sequence of block headers
-  from the genesis block to a particular tip.
-- `bitcoin::chain::iterator` — the associated random-access iterator.
+- `bitcoin::chain` — a concept satisfied by random-access, sized views of the
+  block-header sequence from the genesis block to a particular tip.
+- `bitcoin::any_chain` — a type-erased wrapper for values whose type models
+  `bitcoin::chain`.
+- `bitcoin::any_chain::iterator` — the associated random-access iterator.
 
 ## Out of scope
 
-- Node-level functions that produce `chain` objects (e.g.
+- Node-level functions that produce chain objects (e.g.
   `get_best_chain()`, `find_chain(const block_hash&)`). These depend on
   consensus logic and are outside the scope of a vocabulary API.
 - Block body data. The element type is `bitcoin::block_header`, not
@@ -72,51 +77,53 @@ harnesses, analysis scripts — therefore require per-library adapters. A common
 
 # Impact on the Standard
 
-This paper adds `bitcoin::chain` and `bitcoin::chain::iterator` to
-`namespace bitcoin` inside the `<bitcoin>` header. It depends on the wording
-of *Adding Bitcoin Vocabulary Types to the C++ Standard Library* and
-introduces no new dependencies beyond `<ranges>`, which is already required
-by that paper.
+This paper adds the concept `bitcoin::chain`, the class `bitcoin::any_chain`,
+and the class `bitcoin::any_chain::iterator` to `namespace bitcoin` inside the
+`<bitcoin>` header. It depends on the wording of *Adding Bitcoin Vocabulary
+Types to the C++ Standard Library* and introduces no new dependencies beyond
+`<algorithm>`, `<concepts>`, `<ranges>`, `<type_traits>`, and `<utility>`,
+which are already required by that paper or by the synopsis below.
 
 # Design considerations
 
 ## D1 — View semantics
 
-A `chain` does not own the block headers it exposes. Implementations maintain
-block data in their own storage (on-disk databases, in-memory trees, flat
-files). `chain` is a lightweight handle — a view over that storage — intended
-to be inexpensive to copy and pass by value. This follows the same rationale as
-the `$value-range$<T>`{.cpp} return types in the vocabulary types paper,
-generalized to a first-class named type.
+A type that models `chain` is a view of block headers on the path from the
+genesis block to a particular tip. `any_chain` is a lightweight, type-erased
+wrapper around such a value, intended to be inexpensive to copy and pass by
+value. Neither the concept nor the wrapper mandates a particular storage or
+ownership strategy for the underlying view object; implementations remain free
+to use references, handles, small-buffer optimization, shared state, or other
+representations appropriate to their chain-storage architecture.
 
-## D2 — Use of `std::ranges::view_interface<chain>`
+## D2 — Use of `std::ranges::view_interface<any_chain>`
 
-Deriving from `std::ranges::view_interface<chain>` and providing `begin()` and
-`end()` makes `operator[]`, `front()`, `back()`, `size()`, and `empty()`
-available through `view_interface`, and integrates `chain` with `<algorithm>`,
-`<ranges>`, and user-written generic code. This is the standard mechanism for
-user-defined views in C++20 and avoids separately specifying derived range
-operations.
+Deriving from `std::ranges::view_interface<any_chain>` and providing `begin()`
+and `end()` integrates `any_chain` with `<algorithm>`, `<ranges>`, and
+user-written generic code. Combined with explicit `operator[]` and `size()`
+members, this also provides the usual view operations such as `front()`,
+`back()`, and `empty()` through `view_interface`.
 
 ## D3 — Proxy iterator model
 
 No known Bitcoin implementation stores block headers as a contiguous array of
-`block_header` objects. An iterator over a `chain` must read or reconstruct
-headers from implementation-defined storage on demand. Consequently
-`chain::iterator::operator*()` returns `bitcoin::block_header` by value rather
-than by reference, making the iterator a proxy iterator. Unlike the C++17
-iterator model, C++20 does not require `reference` to be `value_type&`; it
-requires only that dereferencing the iterator yields a readable value. A
-`chain::iterator` otherwise satisfies the remaining
-`std::random_access_iterator` requirements. The absence of a stable address for
-the returned value means `operator->()` returns an unspecified proxy type
-rather than a raw pointer.
+`block_header` objects. An iterator over an `any_chain` must read or
+reconstruct headers from implementation-defined storage on demand.
+Consequently `any_chain::iterator::operator*()` returns
+`bitcoin::block_header` by value rather than by reference, making the iterator
+a proxy iterator. Unlike the C++17 iterator model, C++20 does not require
+`reference` to be `value_type&`; it requires only that dereferencing the
+iterator yields a readable value. An `any_chain::iterator` otherwise satisfies
+the remaining `std::random_access_iterator` requirements. The absence of a
+stable address for the returned value means `operator->()` returns an
+unspecified proxy type rather than a raw pointer.
 
 ## D4 — Member comparison operations
 
 `std::ranges::mismatch` and `std::ranges::starts_with` are directly usable
-with `chain` values, since `chain` models `std::ranges::random_access_range`.
-They are additionally provided as member functions for two reasons:
+with `any_chain` values and with arbitrary types whose type models
+`bitcoin::chain`. They are additionally provided as member functions of
+`any_chain` for two reasons:
 
 1. Efficient implementations can exploit internal structure — ancestor
    pointers, skip lists, or accumulated-work metadata — to answer these
@@ -127,7 +134,12 @@ They are additionally provided as member functions for two reasons:
    generic algorithms.
 
 The semantics are identical to the corresponding range algorithms; callers who
-prefer the generic form may always use `std::ranges::mismatch(a, b)`.
+prefer the generic form may always use `std::ranges::mismatch(a, b)`. An
+implementation may use same-type member `starts_with` and `mismatch`
+operations on the wrapped view type as optimization hooks. When such hooks are
+present, `starts_with` must return exactly `bool`, and `mismatch` must return
+exactly `std::ranges::mismatch_result<std::ranges::iterator_t<const T>,
+std::ranges::iterator_t<const T>>`, where `T` is the wrapped view type.
 
 ## D5 — Named observer
 
@@ -140,17 +152,15 @@ pattern used throughout these specifications.
 
 ## D6 — Construction
 
-`chain` objects are generally produced by querying a node's chain state.
-Specifying constructors that accept block data would require specifying how
-headers are associated with a chain and how the backing store is managed,
-coupling the type to implementation internals. Such constructors are therefore
-implementation-defined, following the same approach as `bitcoin::transaction`
-and `bitcoin::block` in the vocabulary types paper.
-
-The default constructor is an exception: it creates an empty `chain` with no
-associated backing store. This provides a useful empty state for failed
-lookups, default member initialization, and recursive chain algorithms without
-requiring `std::optional<chain>` in each such use.
+`any_chain` objects are generally produced by querying a node's chain state,
+but they can also be formed from any view whose type models `bitcoin::chain`
+and whose optional optimization hooks, if present, have the required
+signatures. This permits library interfaces to traffic in a stable vocabulary
+type without specifying the backing storage or indexing strategy of the
+wrapped view. The default constructor is an exception: it creates an empty
+`any_chain` with no associated backing view. This provides a useful empty
+state for failed lookups, default member initialization, and recursive chain
+algorithms without requiring `std::optional<any_chain>` in each such use.
 
 # Proposed wording
 
@@ -158,8 +168,9 @@ The wording in this section is relative to the C++ Working Draft and assumes
 that the wording of *Adding Bitcoin Vocabulary Types to the C++ Standard
 Library* has been applied.
 
-[Add `class chain` and `class chain::iterator` to the `<bitcoin>` header
-synopsis in [bitcoin.syn].]{.ednote}
+[Add `template<class T> concept chain`, `class any_chain`, and
+`class any_chain::iterator` to the `<bitcoin>` header synopsis in
+[bitcoin.syn].]{.ednote}
 
 ## [bitcoin.chain.version] Feature test macro
 
@@ -167,84 +178,147 @@ synopsis in [bitcoin.syn].]{.ednote}
 #define __cpp_lib_bitcoin_chain 202XXXL    // also in <bitcoin>
 ```
 
-## [bitcoin.chain] Class `chain`
+## [bitcoin.chain] Concept `chain` and class `any_chain`
 
-### [bitcoin.chain.general]
+### [bitcoin.chain.general] Concept `chain`
 
-- A `chain` object represents a non-owning, ordered sequence of
-  `bitcoin::block_header` values on the path from the genesis block to a
-  particular block. Element `chain[0]` is the genesis block header; element
-  `chain[n]` is the block header at height `n`.
-- A `chain` is _empty_ if it contains no elements. An empty `chain` is a
-  valid object; access to its elements is undefined behavior.
-- `chain` derives from `std::ranges::view_interface<chain>`. In addition to
-  the members listed in [bitcoin.chain.syn], `view_interface` provides
-  `operator[]`, `front()`, `back()`, `size()`, and `empty()`.
-- `chain` models `std::ranges::random_access_range`, `std::ranges::view`,
-  `std::ranges::sized_range`, `std::copyable`, and `std::movable`.
+A type `T` models `chain` if and only if:
+
+- `T` models `std::ranges::view`;
+- `const T` models `std::ranges::random_access_range` and
+  `std::ranges::sized_range`; and
+- `std::ranges::range_reference_t<const T>` is convertible to
+  `bitcoin::block_header`.
 
 ### [bitcoin.chain.syn] Synopsis
 
 ```cpp
 namespace bitcoin {
 
-  class chain : public std::ranges::view_interface<chain> {
+  template<class T>
+  concept chain =
+    std::ranges::view<T> &&
+    std::ranges::random_access_range<const T> &&
+    std::ranges::sized_range<const T> &&
+    std::convertible_to<std::ranges::range_reference_t<const T>,
+                        bitcoin::block_header>;
+
+  class any_chain : public std::ranges::view_interface<any_chain> {
   public:
     class iterator;
     using const_iterator = iterator;
 
-    chain() noexcept;
+    any_chain() noexcept;
 
-    [[nodiscard]] iterator begin() const noexcept;
-    [[nodiscard]] iterator end() const noexcept;
+    template<class T>
+      requires chain<std::remove_cvref_t<T>> &&
+               (!std::same_as<std::remove_cvref_t<T>, any_chain>)
+    any_chain(T&& object);
 
-    [[nodiscard]] std::size_t height() const noexcept;
+    [[nodiscard]] iterator begin() const;
+    [[nodiscard]] iterator end() const;
 
-    [[nodiscard]] std::pair<iterator, iterator>
-      mismatch(const chain& other) const noexcept;
+    [[nodiscard]] bitcoin::block_header operator[](std::size_t index) const;
+    [[nodiscard]] std::size_t size() const;
+    [[nodiscard]] std::size_t height() const;
 
-    [[nodiscard]] bool starts_with(const chain& prefix) const noexcept;
+    [[nodiscard]] std::ranges::mismatch_result<iterator, iterator>
+      mismatch(const any_chain& other) const;
+
+    [[nodiscard]] bool starts_with(const any_chain& prefix) const;
   };
 
 } // namespace bitcoin
 ```
 
-### [bitcoin.chain.cons] Constructors
+### [bitcoin.any_chain.general] Class `any_chain`
+
+- An `any_chain` object represents an ordered sequence of
+  `bitcoin::block_header` values on the path from the genesis block to a
+  particular block. Element `(*this)[0]` is the genesis block header; element
+  `(*this)[n]` is the block header at height `n`.
+- An `any_chain` is _empty_ if it contains no elements. An empty `any_chain`
+  is a valid object; access to its elements is undefined behavior.
+- `any_chain` derives from `std::ranges::view_interface<any_chain>`. In
+  addition to the members listed in [bitcoin.chain.syn], `view_interface`
+  provides `front()`, `back()`, and `empty()`.
+- `any_chain` models `std::ranges::random_access_range`, `std::ranges::view`,
+  `std::ranges::sized_range`, `std::copyable`, and `std::movable`.
+
+### [bitcoin.any_chain.cons] Constructors
 
 ```cpp
-chain() noexcept;
+any_chain() noexcept;
 ```
 
 *Postconditions:* `empty()` is `true`.
 
-### [bitcoin.chain.obs] Observers
+```cpp
+template<class T>
+  requires chain<std::remove_cvref_t<T>> &&
+           (!std::same_as<std::remove_cvref_t<T>, any_chain>)
+any_chain(T&& object);
+```
+
+*Mandates:* Let `U` be `std::remove_cvref_t<T>`. If the expression
+`std::declval<const U&>().starts_with(std::declval<const U&>())` is
+well-formed, its type is exactly `bool`. If the expression
+`std::declval<const U&>().mismatch(std::declval<const U&>())` is well-formed,
+its type is exactly
+`std::ranges::mismatch_result<std::ranges::iterator_t<const U>,
+std::ranges::iterator_t<const U>>`.
+
+*Effects:* Constructs an `any_chain` that wraps `std::forward<T>(object)`.
+
+*Postconditions:* If `std::ranges::empty(object)` is `true`, `empty()` is
+`true`.
+
+*Remarks:* If `U` provides `starts_with` and `mismatch` with the required
+signatures, an implementation may use them to optimize the corresponding
+operations on `any_chain`.
+
+### [bitcoin.any_chain.obs] Observers
 
 ```cpp
-[[nodiscard]] iterator begin() const noexcept;
+[[nodiscard]] iterator begin() const;
 ```
 
 *Returns:* An iterator to the element at height 0 (the genesis block header),
 or `end()` if `*this` is empty.
 
 ```cpp
-[[nodiscard]] iterator end() const noexcept;
+[[nodiscard]] iterator end() const;
 ```
 
 *Returns:* The past-the-end iterator.
 
 ```cpp
-[[nodiscard]] std::size_t height() const noexcept;
+[[nodiscard]] bitcoin::block_header operator[](std::size_t index) const;
+```
+
+*Preconditions:* `index < size()`.
+
+*Returns:* The `bitcoin::block_header` at height `index`.
+
+```cpp
+[[nodiscard]] std::size_t size() const;
+```
+
+*Returns:* The number of block headers in `*this`.
+
+```cpp
+[[nodiscard]] std::size_t height() const;
 ```
 
 *Preconditions:* `!empty()`.
 
 *Returns:* `size() - 1`. The height of the tip block.
 
-### [bitcoin.chain.ops] Operations
+### [bitcoin.any_chain.ops] Operations
 
 ```cpp
-[[nodiscard]] std::pair<iterator, iterator>
-  mismatch(const chain& other) const noexcept;
+[[nodiscard]] std::ranges::mismatch_result<iterator, iterator>
+  mismatch(const any_chain& other) const;
 ```
 
 *Returns:* Let `n` = `std::min(size(), other.size())`. Let `k` be the
@@ -257,34 +331,35 @@ a `k` exists; otherwise `{begin() + n, other.begin() + n}`.
 sub-linear algorithm where their internal representation permits.
 
 ```cpp
-[[nodiscard]] bool starts_with(const chain& prefix) const noexcept;
+[[nodiscard]] bool starts_with(const any_chain& prefix) const;
 ```
 
-*Returns:* `mismatch(prefix).second == prefix.end()`.
+*Returns:* `mismatch(prefix).in2 == prefix.end()`.
 
 *Remarks:* Returns `true` if `prefix` is empty. Returns `true` if `*this`
 and `prefix` agree on every block up to and including the tip of `prefix`.
 
-## [bitcoin.chain.iterator] Class `chain::iterator`
+## [bitcoin.any_chain.iterator] Class `any_chain::iterator`
 
-### [bitcoin.chain.iterator.general]
+### [bitcoin.any_chain.iterator.general]
 
-`chain::iterator` is the random-access iterator type for `bitcoin::chain`. It
-models `std::random_access_iterator` with `value_type` equal to
-`bitcoin::block_header`. Dereferencing an iterator returns a `block_header` by
-value; no reference into the implementation's backing storage is exposed.
+`any_chain::iterator` is the random-access iterator type for
+`bitcoin::any_chain`. It models `std::random_access_iterator` with
+`value_type` equal to `bitcoin::block_header`. Dereferencing an iterator
+returns a `block_header` by value; no reference into the implementation's
+backing storage is exposed.
 
-A default-constructed `chain::iterator` is singular: it is not associated
-with any `chain` and may not be dereferenced, incremented, decremented, or
+A default-constructed `any_chain::iterator` is singular: it is not associated
+with any `any_chain` and may not be dereferenced, incremented, decremented, or
 compared with any iterator other than another singular iterator.
 
 Two iterators are _compatible_ if they were both obtained from the same
-`chain` object (or copies thereof), or both are singular.
+`any_chain` object, or both are singular.
 
-### [bitcoin.chain.iterator.syn] Synopsis
+### [bitcoin.any_chain.iterator.syn] Synopsis
 
 ```cpp
-class bitcoin::chain::iterator {
+class bitcoin::any_chain::iterator {
 public:
   using difference_type = std::ptrdiff_t;
   using value_type = bitcoin::block_header;
@@ -314,7 +389,7 @@ public:
 };
 ```
 
-### [bitcoin.chain.iterator.ops] Operations
+### [bitcoin.any_chain.iterator.ops] Operations
 
 ```cpp
 [[nodiscard]] bitcoin::block_header operator*() const;
@@ -407,7 +482,7 @@ friend difference_type operator-(iterator lhs, iterator rhs);
 ```
 
 *Preconditions:* `lhs` and `rhs` are compatible
-([bitcoin.chain.iterator.general]).
+([bitcoin.any_chain.iterator.general]).
 
 *Returns:* The signed distance from `rhs` to `lhs`.
 
@@ -416,7 +491,7 @@ friend bool operator==(iterator lhs, iterator rhs) noexcept;
 ```
 
 *Preconditions:* `lhs` and `rhs` are compatible
-([bitcoin.chain.iterator.general]).
+([bitcoin.any_chain.iterator.general]).
 
 *Returns:* `true` if `lhs` and `rhs` designate the same position.
 
@@ -425,7 +500,7 @@ friend std::strong_ordering operator<=>(iterator lhs, iterator rhs) noexcept;
 ```
 
 *Preconditions:* `lhs` and `rhs` are compatible
-([bitcoin.chain.iterator.general]).
+([bitcoin.any_chain.iterator.general]).
 
 *Returns:* The three-way comparison of the positions designated by `lhs` and
 `rhs`, where a position at lower height compares less.

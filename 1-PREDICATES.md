@@ -1,5 +1,5 @@
 ---
-title: Adding Bitcoin Protocol Predicates to the C++ Standard Library
+title: Bitcoin Protocol Predicates
 date: today
 document: DXXXXR0
 audience:

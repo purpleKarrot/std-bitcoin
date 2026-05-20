@@ -1,5 +1,5 @@
 ---
-title: Adding Bitcoin Vocabulary Types to the C++ Standard Library
+title: Bitcoin Vocabulary Types
 date: today
 document: DXXXXR0
 audience:
