@@ -1,5 +1,10 @@
 ---
 BasedOnStyle: Mozilla
+AllowShortCaseLabelsOnASingleLine: true
+AlignConsecutiveShortCaseStatements:
+  Enabled: true
+  AcrossEmptyLines: true
+  AcrossComments: true
 AlignOperands: DontAlign
 AlwaysBreakAfterDefinitionReturnType: None
 BinPackArguments: true

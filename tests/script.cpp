@@ -241,3 +241,10 @@ TEST_CASE("script mutators assemble scripts with explicit named operations")
   script.clear();
   CHECK(script.empty());
 }
+
+TEST_CASE("opcode stringification")
+{
+  CHECK(std::format("{}", bitcoin::opcode::op_false) == "OP_0");
+  CHECK(std::format("{}", bitcoin::opcode::op_true) == "OP_1");
+  CHECK(std::format("{}", bitcoin::opcode::op_nop) == "OP_NOP");
+}

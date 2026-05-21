@@ -86,6 +86,7 @@ target_sources(stdbtc
     src/block.cpp
     src/block_header.cpp
     src/chain.cpp
+    src/opcode.cpp
     src/script.cpp
     src/transaction.cpp
   )

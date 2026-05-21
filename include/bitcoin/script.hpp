@@ -6,6 +6,7 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <format>
 #include <iterator>
 #include <limits>
 #include <optional>
@@ -361,3 +362,10 @@ private:
 [[nodiscard]] auto is_pay_to_taproot(script_ref value) noexcept -> bool;
 
 } // namespace bitcoin
+
+template <>
+struct std::formatter<bitcoin::opcode> : std::formatter<std::string_view>
+{
+  auto format(bitcoin::opcode code, std::format_context& ctx) const
+    -> std::format_context::iterator;
+};
