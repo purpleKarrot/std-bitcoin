@@ -27,7 +27,9 @@ set(ENABLE_IPC OFF)
 set(ENABLE_WALLET OFF)
 
 FetchContent_Declare(BitcoinCore EXCLUDE_FROM_ALL
-  URL https://github.com/bitcoin/bitcoin/archive/refs/tags/v31.0.tar.gz
+  # URL https://github.com/bitcoin/bitcoin/archive/refs/tags/v31.0.tar.gz
+  GIT_REPOSITORY https://github.com/bitcoin/bitcoin.git
+  GIT_TAG 0bc9d354dfd8074d1c36a891a69b6585a8775c65
   )
 
 FetchContent_Declare(beman.any_view SYSTEM EXCLUDE_FROM_ALL
@@ -59,6 +61,7 @@ target_link_libraries(stdbtc
     mp-units::mp-units
   PRIVATE
     bitcoin_consensus
+    # bitcoin_node
   )
 
 FetchContent_GetProperties(BitcoinCore SOURCE_DIR BitcoinCore_SOURCE_DIR)
@@ -71,15 +74,20 @@ target_sources(stdbtc
     include/bitcoin/detail/chain_erasure.hpp
     include/bitcoin/detail/erasure.hpp
     include/bitcoin/detail/iterator.hpp
+    include/bitcoin/detail/spent_coins_erasure.hpp
     include/bitcoin/serialization/byte_sink.hpp
     include/bitcoin/amount.hpp
     include/bitcoin/block.hpp
     include/bitcoin/block_header.hpp
     include/bitcoin/chain.hpp
+    include/bitcoin/coin.hpp
     include/bitcoin/hash_id.hpp
     include/bitcoin/predicates.hpp
     include/bitcoin/script.hpp
     include/bitcoin/transaction.hpp
+    include/bitcoin/utxo.hpp
+    include/bitcoin/validation.hpp
+    include/bitcoin.hpp
   PRIVATE
     src/amount.cpp
     src/basic_hash_id.cpp
@@ -89,6 +97,8 @@ target_sources(stdbtc
     src/opcode.cpp
     src/script.cpp
     src/transaction.cpp
+    src/utxo.cpp
+    src/validation.cpp
   )
 
 add_subdirectory(tests)

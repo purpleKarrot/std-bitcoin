@@ -110,6 +110,7 @@ public:
 private:
   std::shared_ptr<detail::transaction_data const> _data;
   std::size_t _index{};
+  friend struct _impl_access;
 };
 
 class transaction
@@ -146,6 +147,7 @@ public:
 
 private:
   std::shared_ptr<detail::transaction_data const> _data;
+  friend struct _impl_access;
 };
 
 auto parse_transaction(std::span<std::byte const> raw)
