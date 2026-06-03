@@ -88,17 +88,13 @@ private:
 class tx_output
 {
 public:
+  tx_output(amount value, script_ref script);
+
   [[nodiscard]] auto value() const noexcept -> amount;
   [[nodiscard]] auto script() const noexcept -> script_ref;
 
   friend auto operator==(tx_output const& lhs, tx_output const& rhs) noexcept
     -> bool;
-
-  // tx_output(amount value, script_ref script)
-  //   : _value{value}
-  //   , _script{script}
-  // {
-  // }
 
   tx_output(std::shared_ptr<detail::transaction_data const> data,
             std::size_t index) noexcept
@@ -110,6 +106,7 @@ public:
 private:
   std::shared_ptr<detail::transaction_data const> _data;
   std::size_t _index{};
+  friend struct _impl_access;
 };
 
 class transaction

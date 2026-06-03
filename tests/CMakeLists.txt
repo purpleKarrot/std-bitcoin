@@ -13,6 +13,7 @@ add_executable(stdbtc-tests
   hash_id.cpp
   script.cpp
   transaction.cpp
+  validation.cpp
   )
 
 target_link_libraries(stdbtc-tests PRIVATE

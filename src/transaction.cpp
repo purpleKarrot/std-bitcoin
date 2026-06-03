@@ -10,6 +10,16 @@
 #include "streams.h"
 
 namespace bitcoin {
+namespace {
+
+auto as_CScript(bitcoin::script_ref script) -> CScript
+{
+  auto const bytes = as_bytes(script);
+  auto const* data = reinterpret_cast<uint8_t const*>(bytes.data());
+  return {data, data + bytes.size()};
+}
+
+} // namespace
 
 auto tx_input::previous_output() const noexcept -> outpoint
 {
@@ -57,6 +67,15 @@ auto operator==(tx_input const& lhs, tx_input const& rhs) noexcept -> bool
   return lhs._data->vin[lhs._index] == rhs._data->vin[rhs._index] &&
     lhs._data->vin[lhs._index].scriptWitness.stack ==
     rhs._data->vin[rhs._index].scriptWitness.stack;
+}
+
+tx_output::tx_output(amount value, script_ref script)
+  : _index{0}
+{
+  auto mut = CMutableTransaction{};
+  mut.vout.emplace_back(value.numerical_value_in(units::satoshi),
+                        as_CScript(script));
+  _data = std::make_shared<detail::transaction_data>(std::move(mut));
 }
 
 auto tx_output::value() const noexcept -> amount

@@ -37,6 +37,12 @@ struct _impl_access
     assert(tx._data != nullptr);
     return *tx._data;
   }
+
+  static auto get(tx_output const& out) -> CTxOut const&
+  {
+    assert(out._data != nullptr);
+    return out._data->vout[out._index];
+  }
 };
 
 } // namespace bitcoin
