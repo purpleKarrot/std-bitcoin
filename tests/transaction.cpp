@@ -11,41 +11,11 @@
 
 #include <doctest/doctest.h>
 
+#include "hex.hpp"
+
+using namespace hex_literal;
+
 namespace {
-
-constexpr auto byte(unsigned value) noexcept -> std::byte
-{
-  return std::byte{static_cast<std::uint8_t>(value)};
-}
-
-auto hex_nibble(char c) -> unsigned
-{
-  if (c >= '0' && c <= '9') {
-    return static_cast<unsigned>(c - '0');
-  }
-  if (c >= 'a' && c <= 'f') {
-    return static_cast<unsigned>(c - 'a' + 10);
-  }
-  if (c >= 'A' && c <= 'F') {
-    return static_cast<unsigned>(c - 'A' + 10);
-  }
-  throw std::invalid_argument{"invalid hex digit"};
-}
-
-auto hex_bytes(std::string_view hex) -> std::vector<std::byte>
-{
-  if (hex.size() % 2 != 0) {
-    throw std::invalid_argument{"hex string must have even length"};
-  }
-
-  auto bytes = std::vector<std::byte>{};
-  bytes.reserve(hex.size() / 2);
-  for (std::size_t i = 0; i < hex.size(); i += 2) {
-    auto const value = (hex_nibble(hex[i]) << 4U) | hex_nibble(hex[i + 1]);
-    bytes.push_back(byte(value));
-  }
-  return bytes;
-}
 
 struct vector_sink
 {
@@ -57,7 +27,7 @@ struct vector_sink
   std::vector<std::byte> bytes;
 };
 
-constexpr auto legacy_tx_hex =
+constexpr auto legacy_tx =
   "01000000"
   "01"
   "0000000000000000000000000000000000000000000000000000000000000000"
@@ -67,9 +37,9 @@ constexpr auto legacy_tx_hex =
   "01"
   "0000000000000000"
   "00"
-  "00000000";
+  "00000000"_hex;
 
-constexpr auto witness_tx_hex =
+constexpr auto witness_tx =
   "01000000"
   "0001"
   "01"
@@ -82,9 +52,9 @@ constexpr auto witness_tx_hex =
   "00"
   "01"
   "02dead"
-  "00000000";
+  "00000000"_hex;
 
-constexpr auto witness_tx_alt_hex =
+constexpr auto witness_tx_alt =
   "01000000"
   "0001"
   "01"
@@ -97,7 +67,7 @@ constexpr auto witness_tx_alt_hex =
   "00"
   "01"
   "02beef"
-  "00000000";
+  "00000000"_hex;
 
 } // namespace
 
@@ -116,8 +86,7 @@ TEST_CASE("default-constructed transaction is empty")
 
 TEST_CASE("legacy transaction parses and round-trips")
 {
-  auto const raw = hex_bytes(legacy_tx_hex);
-  auto const tx = bitcoin::parse_transaction(std::span{raw});
+  auto const tx = bitcoin::parse_transaction(legacy_tx);
   REQUIRE(tx.has_value());
 
   auto inputs = tx->inputs();
@@ -138,17 +107,16 @@ TEST_CASE("legacy transaction parses and round-trips")
   CHECK(output.script().empty());
 
   CHECK(std::ranges::equal(as_bytes(tx->id()), as_bytes(tx->witness_id())));
-  CHECK(bitcoin::serialized_size(*tx) == raw.size());
+  CHECK(bitcoin::serialized_size(*tx) == legacy_tx.size());
 
   auto sink = vector_sink{};
   bitcoin::serialize(*tx, sink);
-  CHECK(sink.bytes == raw);
+  CHECK(std::ranges::equal(sink.bytes, legacy_tx));
 }
 
 TEST_CASE("witness transaction exposes witness and has distinct identifiers")
 {
-  auto const raw = hex_bytes(witness_tx_hex);
-  auto const tx = bitcoin::parse_transaction(std::span{raw});
+  auto const tx = bitcoin::parse_transaction(witness_tx);
   REQUIRE(tx.has_value());
 
   auto inputs = tx->inputs();
@@ -159,30 +127,28 @@ TEST_CASE("witness transaction exposes witness and has distinct identifiers")
   REQUIRE(witness.size() == 1);
 
   auto const witness_item = witness.front();
-  CHECK(std::ranges::equal(witness_item, hex_bytes("dead")));
+  CHECK(std::ranges::equal(witness_item, "dead"_hex));
   CHECK_FALSE(
     std::ranges::equal(as_bytes(tx->id()), as_bytes(tx->witness_id())));
-  CHECK(bitcoin::serialized_size(*tx) == raw.size());
+  CHECK(bitcoin::serialized_size(*tx) == witness_tx.size());
 
   auto sink = vector_sink{};
   bitcoin::serialize(*tx, sink);
-  CHECK(sink.bytes == raw);
+  CHECK(std::ranges::equal(sink.bytes, witness_tx));
 }
 
 TEST_CASE("transaction parsing rejects trailing bytes")
 {
-  auto raw = hex_bytes(legacy_tx_hex);
-  raw.push_back(byte(0x00));
+  auto raw = std::vector(legacy_tx.begin(), legacy_tx.end());
+  raw.push_back(std::byte{0x00});
   auto const tx = bitcoin::parse_transaction(std::span{raw});
   CHECK(!tx.has_value());
 }
 
 TEST_CASE("tx_input equality includes witness")
 {
-  auto const raw1 = hex_bytes(witness_tx_hex);
-  auto const raw2 = hex_bytes(witness_tx_alt_hex);
-  auto const tx1 = bitcoin::parse_transaction(std::span{raw1});
-  auto const tx2 = bitcoin::parse_transaction(std::span{raw2});
+  auto const tx1 = bitcoin::parse_transaction(witness_tx);
+  auto const tx2 = bitcoin::parse_transaction(witness_tx_alt);
   REQUIRE(tx1.has_value());
   REQUIRE(tx2.has_value());
   CHECK_FALSE(tx1->inputs().front() == tx2->inputs().front());
@@ -191,8 +157,8 @@ TEST_CASE("tx_input equality includes witness")
 TEST_CASE("outpoint hashing is consistent with equality")
 {
   auto bytes = std::array<std::byte, 32>{};
-  bytes[0] = byte(0x12);
-  bytes[31] = byte(0x34);
+  bytes[0] = std::byte{0x12};
+  bytes[31] = std::byte{0x34};
 
   auto const txid = bitcoin::txid{std::span{bytes}};
   auto const a = bitcoin::outpoint{txid, 7};

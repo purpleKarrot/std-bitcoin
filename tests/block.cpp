@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: BSL-1.0
 
 #include <bitcoin/block.hpp>
-#include <bitcoin/block_header.hpp>
-#include <bitcoin/predicates.hpp>
 
 #include <array>
 #include <cstdint>
@@ -12,41 +10,14 @@
 
 #include <doctest/doctest.h>
 
+#include <bitcoin/block_header.hpp>
+#include <bitcoin/predicates.hpp>
+
+#include "hex.hpp"
+
+using namespace hex_literal;
+
 namespace {
-
-constexpr auto byte(unsigned value) noexcept -> std::byte
-{
-  return std::byte{static_cast<std::uint8_t>(value)};
-}
-
-auto hex_nibble(char c) -> unsigned
-{
-  if (c >= '0' && c <= '9') {
-    return static_cast<unsigned>(c - '0');
-  }
-  if (c >= 'a' && c <= 'f') {
-    return static_cast<unsigned>(c - 'a' + 10);
-  }
-  if (c >= 'A' && c <= 'F') {
-    return static_cast<unsigned>(c - 'A' + 10);
-  }
-  throw std::invalid_argument{"invalid hex digit"};
-}
-
-auto hex_bytes(std::string_view hex) -> std::vector<std::byte>
-{
-  if (hex.size() % 2 != 0) {
-    throw std::invalid_argument{"hex string must have even length"};
-  }
-
-  auto bytes = std::vector<std::byte>{};
-  bytes.reserve(hex.size() / 2);
-  for (std::size_t i = 0; i < hex.size(); i += 2) {
-    auto const value = (hex_nibble(hex[i]) << 4U) | hex_nibble(hex[i + 1]);
-    bytes.push_back(byte(value));
-  }
-  return bytes;
-}
 
 struct vector_sink
 {
@@ -58,15 +29,15 @@ struct vector_sink
   std::vector<std::byte> bytes;
 };
 
-constexpr auto header_hex =
+constexpr auto header_buf =
   "00000000"
   "0000000000000000000000000000000000000000000000000000000000000000"
   "0000000000000000000000000000000000000000000000000000000000000000"
   "00000000"
   "00000000"
-  "00000000";
+  "00000000"_hex;
 
-constexpr auto legacy_tx_hex =
+constexpr auto legacy_tx =
   "01000000"
   "01"
   "0000000000000000000000000000000000000000000000000000000000000000"
@@ -76,16 +47,15 @@ constexpr auto legacy_tx_hex =
   "01"
   "0000000000000000"
   "00"
-  "00000000";
+  "00000000"_hex;
 
 } // namespace
 
 TEST_CASE("block header parses and round-trips")
 {
-  auto const raw = hex_bytes(header_hex);
-  REQUIRE(raw.size() == 80);
+  REQUIRE(header_buf.size() == 80);
 
-  auto const header = bitcoin::parse_block_header(std::span{raw});
+  auto const header = bitcoin::parse_block_header(header_buf);
   REQUIRE(header.has_value());
   CHECK(header->version() == 0);
   CHECK(header->prev_block_hash() == bitcoin::block_hash{});
@@ -97,22 +67,21 @@ TEST_CASE("block header parses and round-trips")
 
   auto sink = vector_sink{};
   bitcoin::serialize(*header, sink);
-  CHECK(sink.bytes == raw);
+  CHECK(std::ranges::equal(sink.bytes, header_buf));
 }
 
 TEST_CASE("block header parsing rejects trailing bytes")
 {
-  auto raw = hex_bytes(header_hex);
-  raw.push_back(byte(0x00));
+  auto raw = std::vector(header_buf.begin(), header_buf.end());
+  raw.push_back(std::byte{0x00});
   CHECK_FALSE(bitcoin::parse_block_header(std::span{raw}).has_value());
 }
 
 TEST_CASE("block parses and round-trips")
 {
-  auto raw = hex_bytes(header_hex);
-  raw.push_back(byte(0x01));
-  auto const tx = hex_bytes(legacy_tx_hex);
-  raw.insert(raw.end(), tx.begin(), tx.end());
+  auto raw = std::vector(header_buf.begin(), header_buf.end());
+  raw.push_back(std::byte{0x01});
+  raw.insert(raw.end(), legacy_tx.begin(), legacy_tx.end());
 
   auto const block = bitcoin::parse_block(std::span{raw});
   REQUIRE(block.has_value());
