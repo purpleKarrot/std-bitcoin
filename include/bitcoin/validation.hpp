@@ -2,11 +2,13 @@
 
 #pragma once
 
+#include <chrono>
 #include <cstdint>
 #include <format>
 
 #include <bitcoin/block.hpp>
 #include <bitcoin/block_header.hpp>
+#include <bitcoin/chain.hpp>
 #include <bitcoin/transaction.hpp>
 
 namespace bitcoin {
@@ -27,14 +29,17 @@ private:
 };
 
 verification_status verify(block_header const& header);
-// verification_status verify(block_header const& header, chain);
+verification_status verify(block_header const& header, any_chain_view chain,
+                           std::chrono::sys_seconds now);
 
 verification_status verify(bitcoin::block const& block);
-// verification_status verify(bitcoin::block const& block, chain);
-// verification_status verify(bitcoin::block const& block, chain, coins);
+verification_status verify(bitcoin::block const& block, any_chain_view chain,
+                           std::chrono::sys_seconds now);
+// verification_status verify(bitcoin::block const& block, chain, now, coins);
 
 verification_status verify(bitcoin::transaction const& tx);
-// verification_status verify(bitcoin::transaction const& tx, chain);
+verification_status verify(bitcoin::transaction const& tx,
+                           any_chain_view chain);
 // verification_status verify(bitcoin::transaction const& tx, chain, coins);
 
 } // namespace bitcoin

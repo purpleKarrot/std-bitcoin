@@ -16,20 +16,20 @@
 namespace bitcoin {
 
 template <typename T>
-concept chain =
+concept chain_view =
   std::ranges::view<T> && std::ranges::random_access_range<T const> &&
   std::ranges::sized_range<T const> &&
   std::convertible_to<std::ranges::range_reference_t<T const>, block_header>;
 
-class any_chain : public detail::random_access_view<any_chain>
+class any_chain_view : public detail::random_access_view<any_chain_view>
 {
 public:
-  any_chain() noexcept = default;
+  any_chain_view() noexcept = default;
 
   template <typename T>
-    requires(chain<std::remove_cvref_t<T>> &&
-             !std::same_as<std::remove_cvref_t<T>, any_chain>)
-  any_chain(T&& object)
+    requires(chain_view<std::remove_cvref_t<T>> &&
+             !std::same_as<std::remove_cvref_t<T>, any_chain_view>)
+  any_chain_view(T&& object)
     : _impl(std::forward<T>(object))
   {
   }
@@ -42,10 +42,10 @@ public:
   [[nodiscard]] auto size() const -> std::size_t;
   [[nodiscard]] auto height() const -> std::size_t;
 
-  [[nodiscard]] auto mismatch(any_chain const& other) const
+  [[nodiscard]] auto mismatch(any_chain_view const& other) const
     -> std::ranges::mismatch_result<iterator, iterator>;
 
-  [[nodiscard]] auto starts_with(any_chain const& prefix) const -> bool;
+  [[nodiscard]] auto starts_with(any_chain_view const& prefix) const -> bool;
 
 private:
   detail::chain_erasure _impl;

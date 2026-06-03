@@ -19,6 +19,11 @@ verification_status verify(block_header const& header)
   return result ? 0 : -1; // BlockValidationResult::BLOCK_INVALID_HEADER
 }
 
+// verification_status verify(block_header const& header, any_chain_view chain,
+//                            std::chrono::sys_seconds now)
+// {
+// }
+
 verification_status verify(bitcoin::block const& block)
 {
   auto state = BlockValidationState{};
@@ -27,12 +32,22 @@ verification_status verify(bitcoin::block const& block)
   return result ? 0 : -1; // state.GetResult();
 }
 
+// verification_status verify(bitcoin::block const& block, any_chain_view chain,
+//                            std::chrono::sys_seconds now)
+// {
+// }
+
 verification_status verify(bitcoin::transaction const& tx)
 {
   auto state = TxValidationState{};
   bool const ok = CheckTransaction(_impl_access::get(tx), state);
   return ok ? 0 : -1; // state.GetResult();
 }
+
+// verification_status verify(
+//   bitcoin::transaction const& tx, any_chain_view chain)
+// {
+// }
 
 } // namespace bitcoin
 

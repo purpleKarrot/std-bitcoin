@@ -58,21 +58,21 @@ private:
 
 } // namespace
 
-static_assert(bitcoin::chain<std::span<bitcoin::block_header>>);
-static_assert(bitcoin::chain<pointer_chain_view>);
-static_assert(!bitcoin::chain<std::vector<bitcoin::block_header>>);
-static_assert(
-  std::same_as<decltype(std::declval<bitcoin::any_chain const&>().mismatch(
-                 std::declval<bitcoin::any_chain const&>())),
-               std::ranges::mismatch_result<bitcoin::any_chain::iterator,
-                                            bitcoin::any_chain::iterator>>);
+static_assert(bitcoin::chain_view<std::span<bitcoin::block_header>>);
+static_assert(bitcoin::chain_view<pointer_chain_view>);
+static_assert(!bitcoin::chain_view<std::vector<bitcoin::block_header>>);
+static_assert(std::same_as<
+              decltype(std::declval<bitcoin::any_chain_view const&>().mismatch(
+                std::declval<bitcoin::any_chain_view const&>())),
+              std::ranges::mismatch_result<bitcoin::any_chain_view::iterator,
+                                           bitcoin::any_chain_view::iterator>>);
 
-TEST_CASE("any_chain default construction")
+TEST_CASE("any_chain_view default construction")
 {
-  CHECK(bitcoin::any_chain{}.empty());
+  CHECK(bitcoin::any_chain_view{}.empty());
 }
 
-TEST_CASE("any_chain constructs from lvalue chain view without operator[]")
+TEST_CASE("any_chain_view constructs from lvalue chain view without operator[]")
 {
   auto headers = std::array{
     make_block_header(std::byte{1}),
@@ -80,14 +80,14 @@ TEST_CASE("any_chain constructs from lvalue chain view without operator[]")
   };
   auto view = pointer_chain_view(headers.data(), headers.size());
 
-  bitcoin::any_chain chain = view;
+  bitcoin::any_chain_view chain = view;
 
   CHECK(chain.size() == headers.size());
   CHECK(chain[0] == headers[0]);
   CHECK(chain[1] == headers[1]);
 }
 
-TEST_CASE("any_chain mismatch returns ranges mismatch_result")
+TEST_CASE("any_chain_view mismatch returns ranges mismatch_result")
 {
   auto lhs_headers = std::array{
     make_block_header(std::byte{1}),
@@ -97,9 +97,9 @@ TEST_CASE("any_chain mismatch returns ranges mismatch_result")
     make_block_header(std::byte{1}),
   };
 
-  bitcoin::any_chain lhs =
+  bitcoin::any_chain_view lhs =
     pointer_chain_view(lhs_headers.data(), lhs_headers.size());
-  bitcoin::any_chain rhs =
+  bitcoin::any_chain_view rhs =
     pointer_chain_view(rhs_headers.data(), rhs_headers.size());
 
   auto const result = lhs.mismatch(rhs);
@@ -109,7 +109,7 @@ TEST_CASE("any_chain mismatch returns ranges mismatch_result")
   CHECK(lhs.starts_with(rhs));
 }
 
-TEST_CASE("any_chain starts_with handles exact prefix and divergence")
+TEST_CASE("any_chain_view starts_with handles exact prefix and divergence")
 {
   auto full_headers = std::array{
     make_block_header(std::byte{1}),
@@ -125,15 +125,15 @@ TEST_CASE("any_chain starts_with handles exact prefix and divergence")
     make_block_header(std::byte{4}),
   };
 
-  bitcoin::any_chain full =
+  bitcoin::any_chain_view full =
     pointer_chain_view(full_headers.data(), full_headers.size());
-  bitcoin::any_chain exact =
+  bitcoin::any_chain_view exact =
     pointer_chain_view(full_headers.data(), full_headers.size());
-  bitcoin::any_chain prefix =
+  bitcoin::any_chain_view prefix =
     pointer_chain_view(prefix_headers.data(), prefix_headers.size());
-  bitcoin::any_chain divergent =
+  bitcoin::any_chain_view divergent =
     pointer_chain_view(divergent_headers.data(), divergent_headers.size());
-  bitcoin::any_chain empty = pointer_chain_view();
+  bitcoin::any_chain_view empty = pointer_chain_view();
 
   CHECK(full.starts_with(exact));
   CHECK(full.starts_with(prefix));

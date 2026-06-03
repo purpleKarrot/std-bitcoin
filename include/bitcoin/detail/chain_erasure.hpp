@@ -131,7 +131,7 @@ private:
           std::declval<T const&>()))>;
       static_assert(
         std::same_as<actual_result, bool>,
-        "bitcoin::chain fast-path customization T::starts_with(T const&) "
+        "bitcoin::chain_view fast-path customization T::starts_with(T const&) "
         "must return bool");
 
       value.starts_with = [](void const* storage, void const* other) -> bool {
@@ -148,8 +148,8 @@ private:
                                      std::ranges::iterator_t<T const>>;
       static_assert(
         std::same_as<actual_mismatch_result, expected_mismatch_result>,
-        "bitcoin::chain fast-path customization T::mismatch(T const&) must "
-        "return std::ranges::mismatch_result<iterator_t<const T>, "
+        "bitcoin::chain_view fast-path customization T::mismatch(T const&) "
+        "must return std::ranges::mismatch_result<iterator_t<const T>, "
         "iterator_t<const T>>");
 
       value.mismatch = [](void const* storage,

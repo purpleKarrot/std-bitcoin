@@ -13,18 +13,18 @@
 
 namespace bitcoin {
 
-auto any_chain::size() const -> std::size_t
+auto any_chain_view::size() const -> std::size_t
 {
   return _impl.size();
 }
 
-auto any_chain::height() const -> std::size_t
+auto any_chain_view::height() const -> std::size_t
 {
   assert(!empty());
   return size() - 1;
 }
 
-auto any_chain::mismatch(any_chain const& other) const
+auto any_chain_view::mismatch(any_chain_view const& other) const
   -> std::ranges::mismatch_result<iterator, iterator>
 {
   if (_impl.same_type(other._impl) && _impl.has_mismatch()) {
@@ -36,7 +36,7 @@ auto any_chain::mismatch(any_chain const& other) const
   return std::ranges::mismatch(*this, other);
 }
 
-auto any_chain::starts_with(any_chain const& prefix) const -> bool
+auto any_chain_view::starts_with(any_chain_view const& prefix) const -> bool
 {
   auto const prefix_size = prefix.size();
   if (prefix_size == 0) {
