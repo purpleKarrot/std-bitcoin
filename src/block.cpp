@@ -28,14 +28,13 @@ auto make_block_header(CBlockHeader const& header) -> bitcoin::block_header
 } // namespace
 
 block::block()
-  : _data{std::make_shared<detail::block_data>()}
-  , _header{make_block_header(*_data)}
+  : block(detail::block_data{})
 {
 }
 
 block::block(detail::block_data data)
-  : _data{std::make_shared<detail::block_data>(std::move(data))}
-  , _header{make_block_header(*_data)}
+  : _header{make_block_header(data)}
+  , _data{std::make_shared<detail::block_data>(std::move(data))}
 {
 }
 

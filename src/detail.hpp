@@ -2,10 +2,16 @@
 
 #pragma once
 
+#include <cassert>
+
+#include <bitcoin/block.hpp>
+#include <bitcoin/transaction.hpp>
+
 #include "primitives/block.h"
 #include "primitives/transaction.h"
 
-namespace bitcoin::detail {
+namespace bitcoin {
+namespace detail {
 
 struct block_data : CBlock
 {
@@ -16,4 +22,21 @@ struct transaction_data : CTransaction
   using CTransaction::CTransaction;
 };
 
-} // namespace bitcoin::detail
+} // namespace detail
+
+struct _impl_access
+{
+  static auto get(block const& tx) -> CBlock const&
+  {
+    assert(tx._data != nullptr);
+    return *tx._data;
+  }
+
+  static auto get(transaction const& tx) -> CTransaction const&
+  {
+    assert(tx._data != nullptr);
+    return *tx._data;
+  }
+};
+
+} // namespace bitcoin

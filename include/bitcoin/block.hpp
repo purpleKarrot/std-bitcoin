@@ -42,8 +42,9 @@ public:
   friend auto serialized_size(block const& b) -> std::size_t;
 
 private:
-  std::shared_ptr<detail::block_data const> _data;
   block_header _header;
+  std::shared_ptr<detail::block_data const> _data;
+  friend struct _impl_access;
 };
 
 [[nodiscard]] auto parse_block(std::span<std::byte const> raw)

@@ -8,7 +8,7 @@ include(FetchContent)
 enable_testing()
 
 # BitcoinCore build options are not properly prefixed
-set(BUILD_KERNEL_LIB OFF)
+set(BUILD_KERNEL_LIB ON)
 set(BUILD_BENCH OFF)
 set(BUILD_BITCOIN_BIN OFF)
 set(BUILD_CLI OFF)
@@ -27,7 +27,8 @@ set(ENABLE_IPC OFF)
 set(ENABLE_WALLET OFF)
 
 FetchContent_Declare(BitcoinCore EXCLUDE_FROM_ALL
-  URL https://github.com/bitcoin/bitcoin/archive/refs/tags/v31.0.tar.gz
+  GIT_REPOSITORY https://github.com/bitcoin/bitcoin.git
+  GIT_TAG 0bc9d354dfd8074d1c36a891a69b6585a8775c65
   )
 
 FetchContent_Declare(beman.any_view SYSTEM EXCLUDE_FROM_ALL
@@ -58,7 +59,7 @@ target_link_libraries(stdbtc
     beman::any_view
     mp-units::mp-units
   PRIVATE
-    bitcoin_consensus
+    bitcoinkernel
   )
 
 FetchContent_GetProperties(BitcoinCore SOURCE_DIR BitcoinCore_SOURCE_DIR)
@@ -80,6 +81,8 @@ target_sources(stdbtc
     include/bitcoin/predicates.hpp
     include/bitcoin/script.hpp
     include/bitcoin/transaction.hpp
+    include/bitcoin/validation.hpp
+    include/bitcoin.hpp
   PRIVATE
     src/amount.cpp
     src/basic_hash_id.cpp
@@ -89,6 +92,7 @@ target_sources(stdbtc
     src/opcode.cpp
     src/script.cpp
     src/transaction.cpp
+    src/validation.cpp
   )
 
 add_subdirectory(tests)
