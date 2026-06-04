@@ -16,9 +16,6 @@
 
 namespace bitcoin {
 
-inline constexpr auto max_script_size = std::size_t{10'000};
-inline constexpr auto max_script_element_size = std::size_t{520};
-
 enum class opcode : std::uint8_t
 {
   op_0 = 0x00,
@@ -167,6 +164,7 @@ public:
   {
     return _immediate;
   }
+
   [[nodiscard]] constexpr auto pushes_data() const noexcept -> bool
   {
     return static_cast<std::uint8_t>(_code)
@@ -219,6 +217,7 @@ public:
   {
     return _version;
   }
+
   [[nodiscard]] constexpr auto program() const noexcept
     -> std::span<std::byte const>
   {
@@ -249,8 +248,7 @@ public:
     auto operator++() noexcept -> iterator&;
     auto operator++(int) noexcept -> iterator;
 
-    friend auto operator==(iterator const& it, std::default_sentinel_t) noexcept
-      -> bool
+    friend bool operator==(iterator const& it, std::default_sentinel_t) noexcept
     {
       return it._at_end;
     }
@@ -299,6 +297,7 @@ public:
   {
     return _bytes.empty();
   }
+
   friend auto as_bytes(script_ref value) noexcept -> std::span<std::byte const>
   {
     return value._bytes;
@@ -339,7 +338,6 @@ public:
 private:
   void _append_size(std::size_t size);
   void _append_bytes(std::span<std::byte const> bytes);
-  void _require_size(std::size_t extra) const;
 
   std::vector<std::byte> _bytes{};
 };

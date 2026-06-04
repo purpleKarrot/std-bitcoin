@@ -3,11 +3,12 @@
 #include <bitcoin/script.hpp>
 
 #include <cassert>
-#include <stdexcept>
-#include <utility>
 
 namespace bitcoin {
 namespace {
+
+inline constexpr auto script_size_limit = std::size_t{10'000};
+inline constexpr auto script_element_size_limit = std::size_t{520};
 
 [[nodiscard]] constexpr auto to_u8(std::byte value) noexcept -> std::uint8_t
 {
@@ -172,9 +173,6 @@ struct parsed_instruction
 script::script(std::span<std::byte const> bytes)
   : _bytes(bytes.begin(), bytes.end())
 {
-  if (bytes.size() > max_script_size) {
-    throw std::length_error{"bitcoin::script exceeds max_script_size"};
-  }
 }
 
 script::script(script_ref value)
@@ -255,7 +253,6 @@ auto instructions(script_ref value) noexcept -> instruction_view
 
 auto script::append(opcode code) -> script&
 {
-  _require_size(1);
   _bytes.push_back(std::byte{to_u8(code)});
   return *this;
 }
@@ -290,27 +287,23 @@ auto script::append(script_ref suffix) -> script&
 void script::_append_size(std::size_t size)
 {
   if (size < to_u8(opcode::op_pushdata1)) {
-    _require_size(1);
     _bytes.push_back(std::byte{static_cast<std::uint8_t>(size)});
     return;
   }
 
   if (size <= 0xff) {
-    _require_size(2);
     _bytes.push_back(std::byte{to_u8(opcode::op_pushdata1)});
     _bytes.push_back(std::byte{static_cast<std::uint8_t>(size)});
     return;
   }
 
   if (size <= 0xffff) {
-    _require_size(3);
     _bytes.push_back(std::byte{to_u8(opcode::op_pushdata2)});
     _bytes.push_back(std::byte{static_cast<std::uint8_t>(size & 0xffu)});
     _bytes.push_back(std::byte{static_cast<std::uint8_t>((size >> 8) & 0xffu)});
     return;
   }
 
-  _require_size(5);
   _bytes.push_back(std::byte{to_u8(opcode::op_pushdata4)});
   _bytes.push_back(std::byte{static_cast<std::uint8_t>(size & 0xffu)});
   _bytes.push_back(std::byte{static_cast<std::uint8_t>((size >> 8) & 0xffu)});
@@ -320,15 +313,7 @@ void script::_append_size(std::size_t size)
 
 void script::_append_bytes(std::span<std::byte const> bytes)
 {
-  _require_size(bytes.size());
   _bytes.insert(_bytes.end(), bytes.begin(), bytes.end());
-}
-
-void script::_require_size(std::size_t extra) const
-{
-  if (extra > max_script_size - _bytes.size()) {
-    throw std::length_error{"bitcoin::script exceeds max_script_size"};
-  }
 }
 
 auto is_small_integer(opcode code) noexcept -> bool
@@ -385,7 +370,7 @@ auto has_valid_opcodes(script_ref value) noexcept -> bool
     auto const parsed = parse_instruction(remaining);
     if (!parsed.valid
         || !is_defined_opcode(parsed.value.code())
-        || (parsed.value.immediate().size() > max_script_element_size)) {
+        || (parsed.value.immediate().size() > script_element_size_limit)) {
       return false;
     }
 
@@ -419,7 +404,7 @@ auto is_unspendable(script_ref value) noexcept -> bool
 {
   auto const bytes = as_bytes(value);
   return (!bytes.empty() && byte_eq(bytes.front(), to_u8(opcode::op_return)))
-    || (bytes.size() > max_script_size);
+    || (bytes.size() > script_size_limit);
 }
 
 auto witness_program(script_ref value) noexcept

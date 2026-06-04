@@ -15,6 +15,9 @@
 
 namespace {
 
+inline constexpr auto script_size_limit = std::size_t{10'000};
+inline constexpr auto script_element_size_limit = std::size_t{520};
+
 constexpr auto byte(unsigned value) noexcept -> std::byte
 {
   return std::byte{static_cast<std::uint8_t>(value)};
@@ -45,7 +48,7 @@ TEST_CASE("script defaults to an empty byte sequence")
   CHECK(bitcoin::has_valid_opcodes(script));
 }
 
-TEST_CASE("script copies bytes and enforces the maximum size")
+TEST_CASE("script copies bytes and can represent oversized scripts")
 {
   auto const bytes = std::array{
     byte(bitcoin::opcode::op_dup),
@@ -68,8 +71,12 @@ TEST_CASE("script copies bytes and enforces the maximum size")
   CHECK(copied == script);
 
   auto const oversized =
-    std::vector<std::byte>(bitcoin::max_script_size + 1, byte(0x00));
-  CHECK_THROWS_AS(bitcoin::script{std::span{oversized}}, std::length_error);
+    std::vector<std::byte>(script_size_limit + 1, byte(0x00));
+  auto const oversized_script = bitcoin::script{std::span{oversized}};
+  CHECK(as_bytes(oversized_script).size() == oversized.size());
+  CHECK(bitcoin::is_well_formed(oversized_script));
+  CHECK(bitcoin::has_valid_opcodes(oversized_script));
+  CHECK(bitcoin::is_unspendable(oversized_script));
 }
 
 TEST_CASE("small integer opcodes encode and decode")
@@ -136,7 +143,7 @@ TEST_CASE("well-formedness and opcode validity are distinct")
   CHECK_FALSE(bitcoin::has_valid_opcodes(undefined_opcode));
 
   auto large_push_payload =
-    std::vector<std::byte>(bitcoin::max_script_element_size + 1, byte(0x42));
+    std::vector<std::byte>(script_element_size_limit + 1, byte(0x42));
   auto large_push = bitcoin::script{};
   large_push.append_data(large_push_payload);
 
@@ -234,9 +241,10 @@ TEST_CASE("script mutators assemble scripts with explicit named operations")
   CHECK(std::ranges::equal(as_bytes(numbers), std::span{number_bytes}));
 
   auto oversized = bitcoin::script{};
-  auto const payload =
-    std::vector<std::byte>(bitcoin::max_script_size, byte(0x99));
-  CHECK_THROWS_AS(oversized.append_data(payload), std::length_error);
+  auto const payload = std::vector<std::byte>(script_size_limit, byte(0x99));
+  oversized.append_data(payload);
+  CHECK(as_bytes(oversized).size() > script_size_limit);
+  CHECK(bitcoin::is_unspendable(oversized));
 
   script.clear();
   CHECK(script.empty());

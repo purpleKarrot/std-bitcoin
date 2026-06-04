@@ -108,8 +108,12 @@ constraints such as the valid money range are not imposed by the type itself.
 Pattern-matching for `P2PKH`, `P2TR`, opcode enumeration, and script execution
 belong to a higher-level facility (not proposed here). At vocabulary level the
 paper provides two opaque script types: owning `script` and non-owning
-`script_ref`. Their public observation surface is limited to `empty()` and a
-`std::span<const std::byte>` view of the serialized script bytes.
+`script_ref`. Their public observation surface is limited to `empty()` and
+`as_bytes()`, which yields a `std::span<const std::byte>` over serialized bytes.
+
+`script_ref` is intentionally not named `script_view`: it does not model
+`std::ranges::view` (or `std::ranges::range`) because script objects do not
+provide script-level iteration operations directly.
 
 Providing both types permits accessors such as `tx_input::script()` and
 `tx_output::script()` to return a script by value without requiring the
@@ -124,7 +128,17 @@ A script has at least two natural notions of size: serialized byte count and,
 in a future decoding facility, instruction count. An unqualified `size()`
 observer would therefore obscure the unit being measured. The byte count is
 obtainable as `as_bytes(s).size()`. Any future instruction-level facility can
-expose its own size in terms appropriate to that view.
+expose its own size in terms appropriate to that facility.
+
+## Script length limits are not class invariants
+
+`script` and `script_ref` are carriers for serialized script bytes, including
+oversized scripts. They do not enforce a fixed maximum serialized length as a
+construction-time class invariant.
+
+Protocol and policy limits on script size are modeled by semantic operations
+that need them (for example, script predicates), not by the fundamental storage
+types themselves.
 
 ## Witness association with inputs
 
@@ -494,11 +508,7 @@ script() noexcept;
 explicit script(std::span<const std::byte> b);
 ```
 
-*Preconditions:* `b.size() <= 10'000`.
-
 *Effects:* Initializes the stored byte sequence by copying from `b`.
-
-*Throws:* `std::length_error` if `b.size() > 10'000`.
 
 ```cpp
 explicit script(script_ref s);
@@ -565,8 +575,6 @@ script_ref() noexcept;
 ```cpp
 explicit script_ref(std::span<const std::byte> b) noexcept;
 ```
-
-*Preconditions:* `b.size() <= 10'000`.
 
 *Effects:* Initializes the referenced byte sequence to `b`.
 
