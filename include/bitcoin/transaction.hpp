@@ -61,11 +61,11 @@ class tx_input
 public:
   using witness_view =
     beman::any_view::any_view<std::span<std::byte const>,
-                              beman::any_view::any_view_options::random_access |
-                                beman::any_view::any_view_options::sized,
+                              beman::any_view::any_view_options::random_access
+                                | beman::any_view::any_view_options::sized,
                               std::span<std::byte const>>;
 
-  [[nodiscard]] auto previous_output() const noexcept -> outpoint;
+  [[nodiscard]] auto prevout() const noexcept -> outpoint;
   [[nodiscard]] auto script() const noexcept -> script_ref;
   [[nodiscard]] auto sequence() const noexcept -> std::uint32_t;
   [[nodiscard]] auto witness() const -> witness_view;
@@ -112,8 +112,8 @@ private:
 class transaction
 {
   static constexpr auto sized_random_access =
-    beman::any_view::any_view_options::random_access |
-    beman::any_view::any_view_options::sized;
+    beman::any_view::any_view_options::random_access
+    | beman::any_view::any_view_options::sized;
 
 public:
   using input_view =

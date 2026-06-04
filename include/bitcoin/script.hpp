@@ -169,8 +169,8 @@ public:
   }
   [[nodiscard]] constexpr auto pushes_data() const noexcept -> bool
   {
-    return static_cast<std::uint8_t>(_code) <=
-      static_cast<std::uint8_t>(opcode::op_pushdata4);
+    return static_cast<std::uint8_t>(_code)
+      <= static_cast<std::uint8_t>(opcode::op_pushdata4);
   }
 
 private:

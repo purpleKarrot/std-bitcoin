@@ -214,7 +214,7 @@ namespace bitcoin {
     template<class T>
       requires chain_view<std::remove_cvref_t<T>> &&
                (!std::same_as<std::remove_cvref_t<T>, any_chain_view>)
-    any_chain_view(T&& object);
+    explicit any_chain_view(T&& object);
 
     [[nodiscard]] iterator begin() const;
     [[nodiscard]] iterator end() const;

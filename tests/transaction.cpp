@@ -97,8 +97,8 @@ TEST_CASE("legacy transaction parses and round-trips")
   auto const input = inputs.front();
   auto const output = outputs.front();
 
-  CHECK(input.previous_output().txid() == bitcoin::txid{});
-  CHECK(input.previous_output().index() == 0xffffffffU);
+  CHECK(input.prevout().txid() == bitcoin::txid{});
+  CHECK(input.prevout().index() == 0xffffffffU);
   CHECK(input.script().empty());
   CHECK(input.sequence() == 0xffffffffU);
   CHECK(std::ranges::empty(input.witness()));

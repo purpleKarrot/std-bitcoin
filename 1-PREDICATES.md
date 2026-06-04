@@ -208,7 +208,7 @@ unspendable. Such outputs are commonly used to carry data.
 ```
 
 *Returns:* `true` if `t.inputs().size() == 1` and
-`is_coinbase(t.inputs().front().previous_output())` are both `true`;
+`is_coinbase(t.inputs().front().prevout())` are both `true`;
 otherwise `false`.
 
 ```cpp

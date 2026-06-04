@@ -70,9 +70,10 @@ auto operator==(block const& lhs, block const& rhs) noexcept -> bool
     return lhs._data == rhs._data;
   }
 
-  return lhs._header == rhs._header &&
-    std::ranges::equal(lhs._data->vtx, rhs._data->vtx,
-                       [](auto const& l, auto const& r) { return *l == *r; });
+  return (lhs._header == rhs._header)
+    && std::ranges::equal(
+           lhs._data->vtx, rhs._data->vtx,
+           [](auto const& l, auto const& r) { return *l == *r; });
 }
 
 auto parse_block(std::span<std::byte const> raw) -> std::optional<block>

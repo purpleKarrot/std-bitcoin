@@ -21,7 +21,7 @@ auto as_CScript(bitcoin::script_ref script) -> CScript
 
 } // namespace
 
-auto tx_input::previous_output() const noexcept -> outpoint
+auto tx_input::prevout() const noexcept -> outpoint
 {
   assert(_data != nullptr);
   assert(_index < _data->vin.size());
@@ -64,9 +64,9 @@ auto operator==(tx_input const& lhs, tx_input const& rhs) noexcept -> bool
 
   assert(lhs._index < lhs._data->vin.size());
   assert(rhs._index < rhs._data->vin.size());
-  return lhs._data->vin[lhs._index] == rhs._data->vin[rhs._index] &&
-    lhs._data->vin[lhs._index].scriptWitness.stack ==
-    rhs._data->vin[rhs._index].scriptWitness.stack;
+  return (lhs._data->vin[lhs._index] == rhs._data->vin[rhs._index])
+    && (lhs._data->vin[lhs._index].scriptWitness.stack
+        == rhs._data->vin[rhs._index].scriptWitness.stack);
 }
 
 tx_output::tx_output(amount value, script_ref script)

@@ -73,8 +73,8 @@ TEST_CASE("hash ids format as lowercase hex in display byte order")
   auto const bytes = sample_bytes();
   auto const id = bitcoin::txid{std::span{bytes}};
 
-  CHECK(std::format("{}", id) ==
-        "6745000000000000000000000000000000000000000000000000000000002301");
+  CHECK(std::format("{}", id)
+        == "6745000000000000000000000000000000000000000000000000000000002301");
 }
 
 TEST_CASE("hash support is consistent with equality")

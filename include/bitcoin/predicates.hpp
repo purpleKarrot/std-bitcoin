@@ -48,7 +48,7 @@ namespace bitcoin {
 [[nodiscard]] inline auto is_coinbase(transaction const& t) -> bool
 {
   auto inputs = t.inputs();
-  return inputs.size() == 1 && is_coinbase(inputs.front().previous_output());
+  return inputs.size() == 1 && is_coinbase(inputs.front().prevout());
 }
 
 [[nodiscard]] inline auto is_segwit(transaction const& t) -> bool

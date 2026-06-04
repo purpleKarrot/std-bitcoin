@@ -607,7 +607,7 @@ namespace bitcoin {
   public:
     using witness_view = /* $see [bitcoin.tx_input.overview]$ */;
 
-    [[nodiscard]] bitcoin::outpoint previous_output() const noexcept;
+    [[nodiscard]] bitcoin::outpoint prevout() const noexcept;
     [[nodiscard]] bitcoin::script_ref script() const noexcept;
     [[nodiscard]] std::uint32_t sequence() const noexcept;
     [[nodiscard]] witness_view witness() const;
@@ -621,7 +621,7 @@ namespace bitcoin {
 ### [bitcoin.tx_input.obs] Observers
 
 ```cpp
-[[nodiscard]] bitcoin::outpoint previous_output() const noexcept;
+[[nodiscard]] bitcoin::outpoint prevout() const noexcept;
 [[nodiscard]] bitcoin::script_ref script() const noexcept;
 [[nodiscard]] std::uint32_t sequence() const noexcept;
 ```

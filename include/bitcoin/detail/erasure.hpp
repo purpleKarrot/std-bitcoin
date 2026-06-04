@@ -69,9 +69,10 @@ protected:
   static_assert(storage_align >= alignof(std::shared_ptr<void const>));
 
   template <typename T>
-  static constexpr bool stores_inline =
-    sizeof(T) <= storage_size && alignof(T) <= storage_align &&
-    std::copy_constructible<T> && std::is_nothrow_move_constructible_v<T>;
+  static constexpr bool stores_inline = (sizeof(T) <= storage_size)
+    && (alignof(T) <= storage_align)
+    && std::copy_constructible<T>
+    && std::is_nothrow_move_constructible_v<T>;
 
   template <typename T>
   using storage_t =

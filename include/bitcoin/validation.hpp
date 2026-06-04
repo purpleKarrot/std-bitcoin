@@ -28,8 +28,13 @@ enum class verification_flags : std::uint_least32_t
   checksequenceverify = 1U << 10, // BIP112
   witness = 1U << 11,             // BIP141
   taproot = 1U << 17,             // BIPs 341 & 342
-  all = p2sh | dersig | nulldummy | checklocktimeverify | checksequenceverify |
-    witness | taproot,
+  all = p2sh
+    | dersig
+    | nulldummy
+    | checklocktimeverify
+    | checksequenceverify
+    | witness
+    | taproot,
 };
 
 [[nodiscard]] constexpr verification_flags operator|(
@@ -71,9 +76,9 @@ verification_status verify(
   script_ref script, amount value, transaction const& tx,
   std::size_t input_index, verification_flags flags,
   beman::any_view::any_view<tx_output const,
-                            beman::any_view::any_view_options::random_access |
-                              beman::any_view::any_view_options::sized>
-    spent_outputs = {});
+                            beman::any_view::any_view_options::random_access
+                              | beman::any_view::any_view_options::sized>
+    prevouts = {});
 
 } // namespace bitcoin
 

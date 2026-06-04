@@ -34,8 +34,8 @@ constexpr bool is_set(bitcoin::verification_flags f,
 
 bool is_valid_flag_combination(script_verify_flags flags)
 {
-  if (flags & SCRIPT_VERIFY_CLEANSTACK &&
-      ~flags & (SCRIPT_VERIFY_P2SH | SCRIPT_VERIFY_WITNESS)) {
+  if ((flags & SCRIPT_VERIFY_CLEANSTACK)
+      && (~flags & (SCRIPT_VERIFY_P2SH | SCRIPT_VERIFY_WITNESS))) {
     return false;
   }
   if (flags & SCRIPT_VERIFY_WITNESS && ~flags & SCRIPT_VERIFY_P2SH) {
@@ -99,9 +99,9 @@ verification_status verify(
   script_ref script, amount value, transaction const& tx_to,
   std::size_t input_index, verification_flags flags,
   beman::any_view::any_view<tx_output const,
-                            beman::any_view::any_view_options::random_access |
-                              beman::any_view::any_view_options::sized>
-    spent_outputs_)
+                            beman::any_view::any_view_options::random_access
+                              | beman::any_view::any_view_options::sized>
+    prevouts)
 {
   // Assert that all specified flags are part of the interface before continuing
   assert(!is_set(flags, ~verification_flags::all));
@@ -111,16 +111,16 @@ verification_status verify(
     throw std::invalid_argument("Invalid flag combination");
   }
 
-  if (is_set(flags, verification_flags::taproot) && spent_outputs_.empty()) {
+  if (is_set(flags, verification_flags::taproot) && prevouts.empty()) {
     throw std::invalid_argument("Spent outputs required for taproot");
   }
 
   CTransaction const& tx = _impl_access::get(tx_to);
   std::vector<CTxOut> spent_outputs;
-  if (!spent_outputs_.empty()) {
-    assert(spent_outputs_.size() == tx.vin.size());
-    spent_outputs.reserve(spent_outputs_.size());
-    for (auto const& elem : spent_outputs_) {
+  if (!prevouts.empty()) {
+    assert(prevouts.size() == tx.vin.size());
+    spent_outputs.reserve(prevouts.size());
+    for (auto const& elem : prevouts) {
       spent_outputs.push_back(_impl_access::get(elem));
     }
   }

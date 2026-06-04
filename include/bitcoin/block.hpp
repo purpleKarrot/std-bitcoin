@@ -23,8 +23,8 @@ struct block_data;
 class block
 {
   static constexpr auto sized_random_access =
-    beman::any_view::any_view_options::random_access |
-    beman::any_view::any_view_options::sized;
+    beman::any_view::any_view_options::random_access
+    | beman::any_view::any_view_options::sized;
 
 public:
   using transaction_view =

@@ -25,26 +25,27 @@ namespace {
   return to_u8(lhs) == rhs;
 }
 
-struct parsed_instruction {
+struct parsed_instruction
+{
   bitcoin::instruction value{};
   std::size_t size = 0;
   bool valid = false;
 };
 
-[[nodiscard]] constexpr auto read_le16(std::span<std::byte const, 2> bytes)
-  noexcept -> std::uint16_t
+[[nodiscard]] constexpr auto read_le16(
+  std::span<std::byte const, 2> bytes) noexcept -> std::uint16_t
 {
-  return static_cast<std::uint16_t>(to_u8(bytes[0])) |
-         (static_cast<std::uint16_t>(to_u8(bytes[1])) << 8);
+  return static_cast<std::uint16_t>(to_u8(bytes[0]))
+    | (static_cast<std::uint16_t>(to_u8(bytes[1])) << 8);
 }
 
-[[nodiscard]] constexpr auto read_le32(std::span<std::byte const, 4> bytes)
-  noexcept -> std::uint32_t
+[[nodiscard]] constexpr auto read_le32(
+  std::span<std::byte const, 4> bytes) noexcept -> std::uint32_t
 {
-  return static_cast<std::uint32_t>(to_u8(bytes[0])) |
-         (static_cast<std::uint32_t>(to_u8(bytes[1])) << 8) |
-         (static_cast<std::uint32_t>(to_u8(bytes[2])) << 16) |
-         (static_cast<std::uint32_t>(to_u8(bytes[3])) << 24);
+  return static_cast<std::uint32_t>(to_u8(bytes[0]))
+    | (static_cast<std::uint32_t>(to_u8(bytes[1])) << 8)
+    | (static_cast<std::uint32_t>(to_u8(bytes[2])) << 16)
+    | (static_cast<std::uint32_t>(to_u8(bytes[3])) << 24);
 }
 
 [[nodiscard]] auto parse_instruction(std::span<std::byte const> bytes) noexcept
@@ -93,8 +94,8 @@ struct parsed_instruction {
       return {};
     }
 
-    auto const payload_size = static_cast<std::size_t>(
-      read_le16(bytes.subspan<1, 2>()));
+    auto const payload_size =
+      static_cast<std::size_t>(read_le16(bytes.subspan<1, 2>()));
     if (bytes.size() < 3 + payload_size) {
       return {};
     }
@@ -112,8 +113,8 @@ struct parsed_instruction {
       return {};
     }
 
-    auto const payload_size = static_cast<std::size_t>(
-      read_le32(bytes.subspan<1, 4>()));
+    auto const payload_size =
+      static_cast<std::size_t>(read_le32(bytes.subspan<1, 4>()));
     if (bytes.size() < 5 + payload_size) {
       return {};
     }
@@ -152,7 +153,8 @@ struct parsed_instruction {
 
   if ((to_u8(result.back()) & 0x80u) != 0u) {
     result.push_back(negative ? std::byte{0x80} : std::byte{0x00});
-  } else if (negative) {
+  }
+  else if (negative) {
     auto const high = static_cast<std::uint8_t>(to_u8(result.back()) | 0x80u);
     result.back() = std::byte{high};
   }
@@ -332,8 +334,8 @@ void script::_require_size(std::size_t extra) const
 auto is_small_integer(opcode code) noexcept -> bool
 {
   auto const raw = to_u8(code);
-  return code == opcode::op_0 ||
-         (raw >= to_u8(opcode::op_1) && raw <= to_u8(opcode::op_16));
+  return (code == opcode::op_0)
+    || (raw >= to_u8(opcode::op_1) && raw <= to_u8(opcode::op_16));
 }
 
 auto decode_small_integer(opcode code) noexcept -> int
@@ -381,8 +383,9 @@ auto has_valid_opcodes(script_ref value) noexcept -> bool
 
   while (!remaining.empty()) {
     auto const parsed = parse_instruction(remaining);
-    if (!parsed.valid || !is_defined_opcode(parsed.value.code()) ||
-        parsed.value.immediate().size() > max_script_element_size) {
+    if (!parsed.valid
+        || !is_defined_opcode(parsed.value.code())
+        || (parsed.value.immediate().size() > max_script_element_size)) {
       return false;
     }
 
@@ -415,8 +418,8 @@ auto is_push_only(script_ref value) noexcept -> bool
 auto is_unspendable(script_ref value) noexcept -> bool
 {
   auto const bytes = as_bytes(value);
-  return (!bytes.empty() && byte_eq(bytes.front(), to_u8(opcode::op_return))) ||
-         bytes.size() > max_script_size;
+  return (!bytes.empty() && byte_eq(bytes.front(), to_u8(opcode::op_return)))
+    || (bytes.size() > max_script_size);
 }
 
 auto witness_program(script_ref value) noexcept
@@ -451,24 +454,26 @@ auto witness_program(script_ref value) noexcept
 auto is_pay_to_script_hash(script_ref value) noexcept -> bool
 {
   auto const bytes = as_bytes(value);
-  return bytes.size() == 23 &&
-         byte_eq(bytes[0], to_u8(opcode::op_hash160)) &&
-         byte_eq(bytes[1], 0x14) &&
-         byte_eq(bytes[22], to_u8(opcode::op_equal));
+  return (bytes.size() == 23)
+    && byte_eq(bytes[0], to_u8(opcode::op_hash160))
+    && byte_eq(bytes[1], 0x14)
+    && byte_eq(bytes[22], to_u8(opcode::op_equal));
 }
 
 auto is_pay_to_witness_script_hash(script_ref value) noexcept -> bool
 {
   auto const bytes = as_bytes(value);
-  return bytes.size() == 34 && byte_eq(bytes[0], to_u8(opcode::op_0)) &&
-         byte_eq(bytes[1], 0x20);
+  return (bytes.size() == 34)
+    && byte_eq(bytes[0], to_u8(opcode::op_0))
+    && byte_eq(bytes[1], 0x20);
 }
 
 auto is_pay_to_taproot(script_ref value) noexcept -> bool
 {
   auto const bytes = as_bytes(value);
-  return bytes.size() == 34 && byte_eq(bytes[0], to_u8(opcode::op_1)) &&
-         byte_eq(bytes[1], 0x20);
+  return (bytes.size() == 34)
+    && byte_eq(bytes[0], to_u8(opcode::op_1))
+    && byte_eq(bytes[1], 0x20);
 }
 
 } // namespace bitcoin

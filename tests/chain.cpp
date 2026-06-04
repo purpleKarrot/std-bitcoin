@@ -79,8 +79,7 @@ TEST_CASE("any_chain_view constructs from lvalue chain view without operator[]")
     make_block_header(std::byte{2}),
   };
   auto view = pointer_chain_view(headers.data(), headers.size());
-
-  bitcoin::any_chain_view chain = view;
+  auto chain = bitcoin::any_chain_view{view};
 
   CHECK(chain.size() == headers.size());
   CHECK(chain[0] == headers[0]);
@@ -97,10 +96,10 @@ TEST_CASE("any_chain_view mismatch returns ranges mismatch_result")
     make_block_header(std::byte{1}),
   };
 
-  bitcoin::any_chain_view lhs =
-    pointer_chain_view(lhs_headers.data(), lhs_headers.size());
-  bitcoin::any_chain_view rhs =
-    pointer_chain_view(rhs_headers.data(), rhs_headers.size());
+  auto lhs = bitcoin::any_chain_view{
+    pointer_chain_view(lhs_headers.data(), lhs_headers.size())};
+  auto rhs = bitcoin::any_chain_view{
+    pointer_chain_view(rhs_headers.data(), rhs_headers.size())};
 
   auto const result = lhs.mismatch(rhs);
 
@@ -125,15 +124,15 @@ TEST_CASE("any_chain_view starts_with handles exact prefix and divergence")
     make_block_header(std::byte{4}),
   };
 
-  bitcoin::any_chain_view full =
-    pointer_chain_view(full_headers.data(), full_headers.size());
-  bitcoin::any_chain_view exact =
-    pointer_chain_view(full_headers.data(), full_headers.size());
-  bitcoin::any_chain_view prefix =
-    pointer_chain_view(prefix_headers.data(), prefix_headers.size());
-  bitcoin::any_chain_view divergent =
-    pointer_chain_view(divergent_headers.data(), divergent_headers.size());
-  bitcoin::any_chain_view empty = pointer_chain_view();
+  auto full = bitcoin::any_chain_view{
+    pointer_chain_view(full_headers.data(), full_headers.size())};
+  auto exact = bitcoin::any_chain_view{
+    pointer_chain_view(full_headers.data(), full_headers.size())};
+  auto prefix = bitcoin::any_chain_view{
+    pointer_chain_view(prefix_headers.data(), prefix_headers.size())};
+  auto divergent = bitcoin::any_chain_view{
+    pointer_chain_view(divergent_headers.data(), divergent_headers.size())};
+  auto empty = bitcoin::any_chain_view{pointer_chain_view()};
 
   CHECK(full.starts_with(exact));
   CHECK(full.starts_with(prefix));
