@@ -13,6 +13,9 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      - run: |
+          sudo apt-get update
+          sudo apt-get install -y texlive-xetex
       - uses: actions/checkout@v7
         with:
           submodules: true
