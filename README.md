@@ -54,8 +54,18 @@ projects including:
 
 ## Papers
 
-Papers are numbered and prefixed in reading order. Each is a self-contained
-specification; later papers may depend on earlier ones but never modify them.
+- Bitcoin Vocabulary Types (
+  [html](https://purplekarrot.github.io/std-bitcoin/VOCABULARY.html),
+  [pdf](https://purplekarrot.github.io/std-bitcoin/VOCABULARY.pdf))
+- Bitcoin Protocol Predicates (
+  [html](https://purplekarrot.github.io/std-bitcoin/PREDICATES.html),
+  [pdf](https://purplekarrot.github.io/std-bitcoin/PREDICATES.pdf))
+- Bitcoin Wire Formats: Parsing and Serialization (
+  [html](https://purplekarrot.github.io/std-bitcoin/SERDES.html),
+  [pdf](https://purplekarrot.github.io/std-bitcoin/SERDES.pdf))
+- Bitcoin Chains: `chain_view` and `any_chain_view` (
+  [html](https://purplekarrot.github.io/std-bitcoin/CHAIN.html),
+  [pdf](https://purplekarrot.github.io/std-bitcoin/CHAIN.pdf))
 
 ---
 
