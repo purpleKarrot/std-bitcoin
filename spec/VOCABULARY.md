@@ -1,10 +1,13 @@
 ---
 title: Bitcoin Vocabulary Types
 date: today
-document: DXXXXR0
+document: VOCABULARY
 audience:
   - Library Evolution Working Group
   - SG14 (Low-Latency / Financial)
+author:
+  - name: Daniel Pfeifer
+    email: <daniel@pfeifer-mail.de>
 toc: false
 references:
   - id: BIP141
@@ -73,7 +76,7 @@ No existing names are modified or deprecated.
 
 # Design considerations
 
-## D1 — Strong types over raw integers and byte arrays
+## Strong types over raw integers and byte arrays
 
 `txid`, `wtxid`, `block_hash`, and `hash256` are all 32-byte digest values, but
 they must not be implicitly interconvertible. A function accepting a `txid` must
@@ -84,7 +87,7 @@ The proposal models these as distinct specializations of an exposition-only
 template `$basic-hash-id$<Tag>`{.cpp}, producing separate,
 non-interconvertible types with identical storage representation.
 
-## D2 — Storage and display byte order
+## Storage and display byte order
 
 Bitcoin's double-SHA256 digests are stored on the wire in little-endian
 ("natural hash") byte order. Block explorers, wallet software, and similar
@@ -92,7 +95,7 @@ tools commonly display them with the bytes reversed. The proposed types store
 wire order internally. `std::format` and `std::to_string` produce the customary
 display representation.
 
-## D3 — Distinct monetary type
+## Distinct monetary type
 
 Bitcoin monetary values should not be confused with unrelated integers.
 `bitcoin::amount` is a `std::quantity` specialization [@P3045R8] with
@@ -100,7 +103,7 @@ Bitcoin monetary values should not be confused with unrelated integers.
 unit. The type represents Bitcoin-denominated quantities; protocol-level
 constraints such as the valid money range are not imposed by the type itself.
 
-## D4 — Owning and non-owning opaque script types
+## Owning and non-owning opaque script types
 
 Pattern-matching for `P2PKH`, `P2TR`, opcode enumeration, and script execution
 belong to a higher-level facility (not proposed here). At vocabulary level the
@@ -115,7 +118,7 @@ copy on every access. An implementation may therefore store a script directly,
 store offsets into transaction backing storage, or use any other
 representation consistent with the specified observers.
 
-## D5 — No `size()` observer for script types
+## No `size()` observer for script types
 
 A script has at least two natural notions of size: serialized byte count and,
 in a future decoding facility, instruction count. An unqualified `size()`
@@ -123,7 +126,7 @@ observer would therefore obscure the unit being measured. The byte count is
 obtainable as `as_bytes(s).size()`. Any future instruction-level facility can
 expose its own size in terms appropriate to that view.
 
-## D6 — Witness association with inputs
+## Witness association with inputs
 
 Each `tx_input` exposes its witness data through a `witness()` observer
 returning an implementation-defined range of byte strings. An empty range
@@ -133,21 +136,21 @@ encoding artifact and imposes no constraint on the vocabulary-level design.
 Implementations may store witness data with each input or in a separate
 parallel structure.
 
-## D7 — Opaque class types
+## Opaque class types
 
 All types are `class` with private data members and accessor-only public
 interfaces. Collection accessors return an unspecified type satisfying the
-`$value-range$<T>`{.cpp} named requirement (see D11) rather than
+`$value-range$<T>`{.cpp} named requirement (see [](#range-helper)) rather than
 `const std::vector<T>&`, permitting implementations to choose the backing
 representation.
 
-## D8 — Unit namespace
+## Unit namespace
 
 The sub-namespace `bitcoin::units` contains the monetary unit constants
 `satoshi` and `btc`. Exposing them as ordinary unit objects permits
 construction, conversion, and formatting through the quantity interface.
 
-## D9 — Accessor naming
+## Accessor naming
 
 Bitcoin Core [@BitcoinCore] uses the legacy terms `scriptSig` and
 `scriptPubKey` for the input authorization script and output locking script,
@@ -156,7 +159,7 @@ respectively. The clearer alternatives are `input_script` and
 `tx_input` and `tx_output` already supply that input/output context. The
 accessors are therefore simply named `script()`.
 
-## D10 — ABI considerations
+## ABI considerations
 
 This paper does not mandate any particular ABI versioning scheme. Whether to
 use per-type `inline namespace` versioning (e.g. `inline namespace
@@ -165,7 +168,7 @@ versioning at all is an implementer's choice. The paper requires only that all
 types and constants are accessible as `bitcoin::hash256`, `bitcoin::amount`,
 etc. — i.e. as direct members of `namespace bitcoin`.
 
-## D11 — Exposition-only range helper
+## Exposition-only range helper  {#range-helper}
 
 One exposition-only helper constrains return types of collection accessors in
 this paper. It is not part of the public API.
@@ -190,7 +193,7 @@ insert a new Clause [bitcoin] after [time.h.syn].]{.ednote}
 ## [bitcoin.version] Feature test macro
 
 ```cpp
-#define __cpp_lib_bitcoin 202XXXL    // also in <bitcoin>
+#define __cpp_lib_bitcoin 214XXXL    // also in <bitcoin>
 ```
 
 ## [bitcoin.general] General

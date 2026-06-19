@@ -1,10 +1,13 @@
 ---
 title: Bitcoin Protocol Predicates
 date: today
-document: DXXXXR0
+document: PREDICATES
 audience:
   - Library Evolution Working Group
   - SG14 (Low-Latency / Financial)
+author:
+  - name: Daniel Pfeifer
+    email: <daniel@pfeifer-mail.de>
 toc: false
 references:
   - id: BIP65
@@ -85,7 +88,7 @@ header. It depends on the vocabulary types paper and introduces no new types.
 
 # Design considerations
 
-## D1 — Non-member predicates
+## Non-member predicates
 
 Every predicate in this paper is expressible in terms of the public interface of
 the corresponding vocabulary type. Specifying them as non-member functions
@@ -94,14 +97,14 @@ lookup, permits a single function name to be overloaded across related
 vocabulary types, and allows additional predicates to be added without
 modifying the associated class definitions.
 
-## D2 — Normative semantic requirements
+## Normative semantic requirements
 
 Unlike the vocabulary types (whose internal representation is
 implementation-defined), these predicates have complete *Returns:* clauses
 expressed in terms of the public API. The specification therefore gives their
 semantics entirely in terms of the public interface.
 
-## D3 — Transaction-version dependence of sequence-based predicates
+## Transaction-version dependence of sequence-based predicates
 
 The relative locktime rules from [@BIP68] are only active when the enclosing
 transaction's version is ≥ 2. `has_relative_locktime` as specified here

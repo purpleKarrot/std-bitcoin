@@ -1,10 +1,13 @@
 ---
 title: "Bitcoin Wire Formats: Parsing and Serialization"
 date: today
-document: DXXXXR0
+document: SERDES
 audience:
   - Library Evolution Working Group
   - SG14 (Low-Latency / Financial)
+author:
+  - name: Daniel Pfeifer
+    email: <daniel@pfeifer-mail.de>
 toc: false
 references:
   - id: BIP141
@@ -82,7 +85,7 @@ paper and introduces no core language changes.
 
 # Design considerations
 
-## D1 — Free functions, not constructors
+## Free functions, not constructors
 
 Parsing is an algorithm over raw bytes, not an intrinsic construction policy of
 `transaction`, `block_header`, or `block`. A constructor has only two natural
@@ -94,7 +97,7 @@ Free functions avoid that problem. They also scale better to future extensions
 such as partial parsing, alternate sources, or overloads for additional object
 types.
 
-## D2 — Parsing failure is not an error in the P0709 sense
+## Parsing failure is not an error {#no-error}
 
 As [@P0709R4]{.title} observes, an error is "a function couldn't do what it
 advertised" — its preconditions were met, but it could not achieve its
@@ -112,12 +115,12 @@ may still propagate exceptions arising from ordinary execution, such as memory
 allocation failure. The important distinction is that failure to match the wire
 format is reported by the return value, not by a dedicated parse exception type.
 
-## D3 — Why `expected<T, parse_error>` is rejected
+## Why `expected<T, parse_error>` is rejected
 
 `std::expected<T, E>` is appropriate when the alternative state represents an
 error result. That is not the model in this paper. A type such as
 `expected<transaction, parse_error>` would classify routine parse failure as an
-error, contrary to D2.
+error, contrary to [](#no-error).
 
 It would also force the specification to invent and standardize an error type
 whose sole purpose would be to describe negative parse outcomes that callers are
@@ -129,7 +132,7 @@ encoding of the requested object.
 For the same reason, this paper also rejects throwing a dedicated `parse_error`
 exception on malformed input.
 
-## D4 — Exact-input semantics
+## Exact-input semantics
 
 The parsing functions in this paper accept a `std::span<const std::byte>` and
 return only the parsed object, not a cursor or a count of consumed bytes. For
@@ -140,7 +143,7 @@ exactly one object and no trailing bytes remain.
 If a future facility needs prefix parsing, stream-oriented parsing, or
 incremental decoding, those can be added as separate APIs.
 
-## D5 — `block_header` belongs in the codec surface
+## `block_header` belongs in the codec surface
 
 `block_header` has a distinct and widely used wire format: exactly 80 bytes.
 That encoding is used independently in many contexts, including hashing,
@@ -151,7 +154,7 @@ maintain a separate ad hoc interface for a central protocol type.
 This paper therefore includes standalone parsing and serialization of
 `block_header`.
 
-## D6 — Sink-based serialization and non-materializing computations
+## Sink-based serialization and non-materializing computations
 
 Returning a freshly allocated byte buffer from every serialization operation
 would impose allocation even when the caller already has an output buffer, a
@@ -172,7 +175,7 @@ paper already provides the relevant hash observers. The purpose of the
 sink-based design is to permit efficient implementation of those observers and
 of `serialized_size` without requiring an intermediate byte container.
 
-## D7 — Canonical serialization
+## Canonical serialization
 
 For transactions, two related serializations exist: the legacy witness-stripped
 encoding and the segregated-witness extended encoding. The vocabulary types

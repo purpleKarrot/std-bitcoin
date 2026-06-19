@@ -1,10 +1,13 @@
 ---
 title: "Bitcoin Chains: `chain_view` and `any_chain_view`"
 date: today
-document: DXXXXR0
+document: CHAIN
 audience:
   - Library Evolution Working Group
   - SG14 (Low-Latency / Financial)
+author:
+  - name: Daniel Pfeifer
+    email: <daniel@pfeifer-mail.de>
 toc: false
 references:
   - id: BIP34
@@ -87,7 +90,7 @@ the synopsis below.
 
 # Design considerations
 
-## D1 — View semantics
+## View semantics
 
 A type that models `chain_view` is a view of block headers on the path from the
 genesis block to a particular tip. `any_chain_view` is a lightweight,
@@ -97,7 +100,7 @@ or ownership strategy for the underlying view object; implementations remain
 free to use references, handles, small-buffer optimization, shared state, or
 other representations appropriate to their chain-storage architecture.
 
-## D2 — Use of `std::ranges::view_interface<any_chain_view>`
+## Use of `std::ranges::view_interface<any_chain_view>`
 
 Deriving from `std::ranges::view_interface<any_chain_view>` and providing
 `begin()` and `end()` integrates `any_chain_view` with `<algorithm>`,
@@ -105,7 +108,7 @@ Deriving from `std::ranges::view_interface<any_chain_view>` and providing
 and `size()` members, this also provides the usual view operations such as
 `front()`, `back()`, and `empty()` through `view_interface`.
 
-## D3 — Proxy iterator model
+## Proxy iterator model
 
 No known Bitcoin implementation stores block headers as a contiguous array of
 `block_header` objects. An iterator over an `any_chain_view` must read or
@@ -119,7 +122,7 @@ requires only that dereferencing the iterator yields a readable value. An
 the returned value means `operator->()` returns an unspecified proxy type rather
 than a raw pointer.
 
-## D4 — Member comparison operations
+## Member comparison operations
 
 `std::ranges::mismatch` and `std::ranges::starts_with` are directly usable with
 `any_chain_view` values and with arbitrary types whose type models
@@ -142,7 +145,7 @@ on the wrapped view type as optimization hooks. When such hooks are present,
 `std::ranges::mismatch_result<std::ranges::iterator_t<const T>, std::ranges::iterator_t<const T>>`,
 where `T` is the wrapped view type.
 
-## D5 — Named observer
+## Named observer
 
 The height of a chain — the zero-based index of its tip block — is a fundamental
 domain concept referenced by [@BIP34], [@BIP65], [@BIP112], and others. Although
@@ -151,7 +154,7 @@ avoids repeated `size() - 1` expressions and makes the non-empty precondition
 explicit. `height()` follows the narrow-contract pattern used throughout these
 specifications.
 
-## D6 — Construction
+## Construction
 
 `any_chain_view` objects are generally produced by querying a node's chain
 state, but they can also be formed from any view whose type models
@@ -176,7 +179,7 @@ Library* has been applied.
 ## [bitcoin.chain.version] Feature test macro
 
 ```cpp
-#define __cpp_lib_bitcoin_chain 202XXXL    // also in <bitcoin>
+#define __cpp_lib_bitcoin_chain 214XXXL    // also in <bitcoin>
 ```
 
 ## [bitcoin.chain] Concept `chain_view` and class `any_chain_view`
