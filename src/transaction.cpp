@@ -112,18 +112,20 @@ transaction::transaction()
 {
 }
 
-auto transaction::id() const noexcept -> txid
+void detail::txid_tag::operator()(bitcoin::transaction const& tx,
+                                  std::span<std::byte, 32ul> dst) const
 {
-  assert(_data != nullptr);
-  auto const& hash = _data->GetHash();
-  return txid{std::span<std::byte const, 32>{hash.data(), 32}};
+  assert(tx._data != nullptr);
+  auto const& hash = tx._data->GetHash();
+  std::ranges::copy(hash, dst.begin());
 }
 
-auto transaction::witness_id() const noexcept -> wtxid
+void detail::wtxid_tag::operator()(bitcoin::transaction const& tx,
+                                   std::span<std::byte, 32ul> dst) const
 {
-  assert(_data != nullptr);
-  auto const& hash = _data->GetWitnessHash();
-  return wtxid{std::span<std::byte const, 32>{hash.data(), 32}};
+  assert(tx._data != nullptr);
+  auto const& hash = tx._data->GetWitnessHash();
+  std::ranges::copy(hash, dst.begin());
 }
 
 auto transaction::version() const noexcept -> std::int32_t

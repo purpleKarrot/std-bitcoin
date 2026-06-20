@@ -58,10 +58,10 @@ namespace bitcoin {
 verification_status verify(block_header const& header)
 {
   auto params = CChainParams::Main()->GetConsensus();
-  auto const bytes = as_bytes(header.hash());
+  auto const bytes = as_bytes(block_hash{header});
   auto const* data = reinterpret_cast<unsigned char const*>(bytes.data());
   auto const hash = std::span{data, 32};
-  bool const result = CheckProofOfWork(uint256{hash}, header.bits(), params);
+  bool const result = CheckProofOfWork(uint256{hash}, header.bits, params);
   return result ? 0 : -1; // BlockValidationResult::BLOCK_INVALID_HEADER
 }
 

@@ -57,12 +57,12 @@ TEST_CASE("block header parses and round-trips")
 
   auto const header = bitcoin::parse_block_header(header_buf);
   REQUIRE(header.has_value());
-  CHECK(header->version() == 0);
-  CHECK(header->prev_block_hash() == bitcoin::block_hash{});
-  CHECK(header->merkle_root() == bitcoin::hash256{});
-  CHECK(header->time().time_since_epoch() == std::chrono::seconds{0});
-  CHECK(header->bits() == 0);
-  CHECK(header->nonce() == 0);
+  CHECK(header->version == 0);
+  CHECK(header->prev_block_hash == bitcoin::block_hash{});
+  CHECK(header->merkle_root == bitcoin::hash256{});
+  CHECK(header->time.time_since_epoch() == std::chrono::seconds{0});
+  CHECK(header->bits == 0);
+  CHECK(header->nonce == 0);
   CHECK(bitcoin::serialized_size(*header) == 80);
 
   auto sink = vector_sink{};
@@ -88,7 +88,7 @@ TEST_CASE("block parses and round-trips")
 
   auto const transactions = block->transactions();
   REQUIRE(transactions.size() == 1);
-  CHECK(block->hash() == block->header().hash());
+  CHECK(bitcoin::block_hash{*block} == bitcoin::block_hash{block->header()});
   CHECK(bitcoin::has_coinbase(*block));
   CHECK(bitcoin::serialized_size(*block) == raw.size());
 

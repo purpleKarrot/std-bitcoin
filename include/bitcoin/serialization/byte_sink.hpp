@@ -11,8 +11,9 @@
 namespace bitcoin::serialization {
 
 template <class Sink>
-concept byte_sink =
-  requires(Sink& sink, std::span<std::byte const> bytes) { sink.write(bytes); };
+concept byte_sink = requires(Sink& sink, std::span<std::byte const> bytes) {
+  { sink.write(bytes) };
+};
 
 class byte_sink_ref
 {

@@ -106,7 +106,8 @@ TEST_CASE("legacy transaction parses and round-trips")
   CHECK(output.value() == 0 * bitcoin::units::satoshi);
   CHECK(output.script().empty());
 
-  CHECK(std::ranges::equal(as_bytes(tx->id()), as_bytes(tx->witness_id())));
+  CHECK(std::ranges::equal(as_bytes(bitcoin::txid{*tx}),
+                           as_bytes(bitcoin::wtxid{*tx})));
   CHECK(bitcoin::serialized_size(*tx) == legacy_tx.size());
 
   auto sink = vector_sink{};
@@ -128,8 +129,8 @@ TEST_CASE("witness transaction exposes witness and has distinct identifiers")
 
   auto const witness_item = witness.front();
   CHECK(std::ranges::equal(witness_item, "dead"_hex));
-  CHECK_FALSE(
-    std::ranges::equal(as_bytes(tx->id()), as_bytes(tx->witness_id())));
+  CHECK_FALSE(std::ranges::equal(as_bytes(bitcoin::txid{*tx}),
+                                 as_bytes(bitcoin::wtxid{*tx})));
   CHECK(bitcoin::serialized_size(*tx) == witness_tx.size());
 
   auto sink = vector_sink{};

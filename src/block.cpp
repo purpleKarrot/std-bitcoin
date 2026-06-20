@@ -38,11 +38,6 @@ block::block(detail::block_data data)
 {
 }
 
-auto block::hash() const noexcept -> block_hash
-{
-  return header().hash();
-}
-
 auto block::header() const noexcept -> block_header const&
 {
   return _header;

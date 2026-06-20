@@ -11,6 +11,11 @@
 
 namespace bitcoin::detail {
 
+template <class T, class Tag>
+concept is_hash_source = requires(T const& src, std::span<std::byte, 32> dst) {
+  { Tag{}(src, dst) };
+};
+
 template <class Tag>
 class basic_hash_id
 {
@@ -23,6 +28,12 @@ public:
     std::ranges::copy(bytes, _value.begin());
   }
 
+  template <is_hash_source<Tag> T>
+  explicit basic_hash_id(T const& src)
+  {
+    Tag{}(src, _value);
+  }
+
   [[nodiscard]] constexpr explicit operator bool() const noexcept
   {
     return *this != basic_hash_id{};
@@ -30,14 +41,12 @@ public:
 
 private:
   friend constexpr auto as_bytes(basic_hash_id const& hash) noexcept
-    -> std::span<std::byte const, 32>
   {
-    return {hash._value};
+    return std::span{hash._value};
   }
 
-  friend constexpr auto operator==(basic_hash_id const&,
-                                   basic_hash_id const&) noexcept
-    -> bool = default;
+  friend constexpr bool operator==(basic_hash_id const&,
+                                   basic_hash_id const&) noexcept = default;
   friend constexpr auto operator<=>(basic_hash_id const&,
                                     basic_hash_id const&) noexcept = default;
 
@@ -54,7 +63,6 @@ template <class Tag>
 struct std::formatter<bitcoin::detail::basic_hash_id<Tag>, char>
 {
   constexpr auto parse(std::format_parse_context& ctx)
-    -> std::format_parse_context::iterator
   {
     return _formatter.parse(ctx);
   }
@@ -72,8 +80,8 @@ private:
 template <class Tag>
 struct std::hash<bitcoin::detail::basic_hash_id<Tag>>
 {
-  [[nodiscard]] auto operator()(bitcoin::detail::basic_hash_id<Tag> const& hash)
-    const noexcept -> std::size_t
+  [[nodiscard]] auto operator()(
+    bitcoin::detail::basic_hash_id<Tag> const& hash) const noexcept
   {
     auto const bytes = as_bytes(hash);
     auto const* data = reinterpret_cast<char const*>(bytes.data());

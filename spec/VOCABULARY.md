@@ -136,9 +136,17 @@ encoding artifact and imposes no constraint on the vocabulary-level design.
 Implementations may store witness data with each input or in a separate
 parallel structure.
 
+## Aggregate `block_header`
+
+`block_header` is specified as an aggregate struct with public data members
+to allows aggregate initialization. Hash computation is handled by the
+`block_hash` constructor rather than a member function, preserving the
+separation between data and computation.
+
 ## Opaque class types
 
-All types are `class` with private data members and accessor-only public
+With the exception of `block_header` (which is an aggregate; see above), all
+other types are `class` with private data members and accessor-only public
 interfaces. Collection accessors return an unspecified type satisfying the
 `$value-range$<T>`{.cpp} named requirement (see [](#range-helper)) rather than
 `const std::vector<T>&`, permitting implementations to choose the backing
@@ -225,7 +233,7 @@ namespace bitcoin {
   class tx_input;
   class tx_output;
   class transaction;
-  class block_header;
+  struct block_header;
   class block;
 
 } // namespace bitcoin
@@ -277,10 +285,27 @@ unrelated types; comparisons between them are ill-formed.
 
 A default-constructed `$basic-hash-id$`{.cpp} holds all-zero bytes.
 
+An exposition-only concept `$is-hash-source$<Tag, T>`{.cpp} is satisfied when
+`T` is a permitted source type for constructing the hash specialization with
+tag `Tag`. The permitted pairs are:
+
+| `Tag`             | `T`               |
+|-------------------|--------------------|
+| `block_hash` tag  | `block_header`     |
+| `block_hash` tag  | `block`            |
+| `txid` tag        | `transaction`      |
+| `wtxid` tag       | `transaction`      |
+
+No other pairs satisfy the concept. In particular, `hash256` has no
+hash-source types.
+
 ### [bitcoin.hashid.syn] Synopsis
 
 ```cpp
 namespace bitcoin {
+
+  template<class Tag, class T>
+  concept $is-hash-source$ = /* $see [bitcoin.hashid.overview]$ */; $// exposition only$
 
   template<class Tag>
   class $basic-hash-id$ { $// exposition only$
@@ -288,6 +313,10 @@ namespace bitcoin {
     constexpr $basic-hash-id$() noexcept;
     constexpr explicit $basic-hash-id$(
       std::span<const std::byte, 32> bytes) noexcept;
+
+    template<class T>
+      requires $is-hash-source$<Tag, T>
+    explicit $basic-hash-id$(const T& src);
 
     [[nodiscard]] constexpr explicit operator bool() const noexcept;
 
@@ -324,6 +353,23 @@ constexpr explicit $basic-hash-id$(
 ```
 
 *Effects:* Initializes the stored bytes by copying from `bytes`.
+
+```cpp
+template<class T>
+  requires $is-hash-source$<Tag, T>
+explicit $basic-hash-id$(const T& src);
+```
+
+*Returns:* A `$basic-hash-id$` whose stored bytes are the SHA256d digest
+computed from `src` as follows:
+
+- If `T` is `block_header`, the SHA256d of the serialized block header
+  fields.
+- If `T` is `block`, equivalent to `$basic-hash-id$<Tag>(src.header())`.
+- If `T` is `transaction` and `Tag` is the `txid` tag, the SHA256d of the
+  witness-stripped serialization of `src`.
+- If `T` is `transaction` and `Tag` is the `wtxid` tag, the SHA256d of the
+  full serialization of `src` including witness data.
 
 ### [bitcoin.hashid.obs] Observers
 
@@ -691,8 +737,6 @@ namespace bitcoin {
 
     transaction();
 
-    [[nodiscard]] bitcoin::txid id() const noexcept;
-    [[nodiscard]] bitcoin::wtxid witness_id() const noexcept;
     [[nodiscard]] std::int32_t version() const noexcept;
     [[nodiscard]] std::uint32_t locktime() const noexcept;
     [[nodiscard]] input_view inputs() const;
@@ -716,18 +760,6 @@ transaction();
 ### [bitcoin.transaction.obs] Observers
 
 ```cpp
-[[nodiscard]] bitcoin::txid id() const noexcept;
-[[nodiscard]] bitcoin::wtxid witness_id() const noexcept;
-```
-
-*Returns:* The SHA256d hash of the witness-stripped serialization and of the
-full serialization including witness data, respectively.
-
-*Remarks:* For a transaction with no witness data, `witness_id() == id()`
-when both are compared as `bitcoin::hash256` values. The return types remain
-distinct regardless.
-
-```cpp
 [[nodiscard]] std::int32_t version() const noexcept;
 [[nodiscard]] std::uint32_t locktime() const noexcept;
 ```
@@ -741,45 +773,45 @@ distinct regardless.
 
 *Returns:* Views of the inputs and outputs, respectively.
 
-## [bitcoin.block_header] Class `block_header`
+## [bitcoin.block_header] Aggregate `block_header`
 
 ### [bitcoin.block_header.syn] Synopsis
 
 ```cpp
 namespace bitcoin {
 
-  class block_header {
-  public:
-    [[nodiscard]] bitcoin::block_hash hash() const noexcept;
-    [[nodiscard]] std::int32_t version() const noexcept;
-    [[nodiscard]] bitcoin::block_hash prev_block_hash() const noexcept;
-    [[nodiscard]] bitcoin::hash256 merkle_root() const noexcept;
-    [[nodiscard]] std::chrono::sys_seconds time() const noexcept;
-    [[nodiscard]] std::uint32_t bits() const noexcept;
-    [[nodiscard]] std::uint32_t nonce() const noexcept;
+  struct block_header {
+    std::int32_t version;
+    bitcoin::block_hash prev_block_hash;
+    bitcoin::hash256 merkle_root;
+    std::chrono::sys_seconds time;
+    std::uint32_t bits;
+    std::uint32_t nonce;
 
     friend bool operator==(const block_header& lhs, const block_header& rhs)
-      noexcept;
+      noexcept = default;
+    friend std::strong_ordering operator<=>(const block_header& lhs,
+      const block_header& rhs) noexcept = default;
   };
 
 } // namespace bitcoin
 ```
 
-### [bitcoin.block_header.obs] Observers
+### [bitcoin.block_header.members] Data members
 
-```cpp
-[[nodiscard]] bitcoin::block_hash hash() const noexcept;
-[[nodiscard]] std::int32_t version() const noexcept;
-[[nodiscard]] bitcoin::block_hash prev_block_hash() const noexcept;
-[[nodiscard]] bitcoin::hash256 merkle_root() const noexcept;
-[[nodiscard]] std::chrono::sys_seconds time() const noexcept;
-[[nodiscard]] std::uint32_t bits() const noexcept;
-[[nodiscard]] std::uint32_t nonce() const noexcept;
-```
+`block_header` is an aggregate with the following public data members:
 
-*Returns:* `hash()` returns the SHA256d hash of the 80-byte serialized block
-header. The remaining observers return the values of their respective header
-fields.
+| Member              | Type                          | Description                      |
+|---------------------|-------------------------------|----------------------------------|
+| `version`           | `std::int32_t`                | Block version number             |
+| `prev_block_hash`   | `bitcoin::block_hash`         | Hash of the preceding block      |
+| `merkle_root`       | `bitcoin::hash256`            | Merkle root of transactions      |
+| `time`              | `std::chrono::sys_seconds`    | Block timestamp                  |
+| `bits`              | `std::uint32_t`               | Compact target encoding          |
+| `nonce`             | `std::uint32_t`               | Nonce for proof-of-work          |
+
+The block hash is obtained by constructing a `bitcoin::block_hash` from the
+header: `bitcoin::block_hash{hdr}`. See [bitcoin.hashid.cons].
 
 ## [bitcoin.block] Class `block`
 
@@ -801,7 +833,6 @@ namespace bitcoin {
 
     block();
 
-    [[nodiscard]] bitcoin::block_hash hash() const noexcept;
     [[nodiscard]] const bitcoin::block_header& header() const noexcept;
     [[nodiscard]] transaction_view transactions() const;
 
@@ -820,12 +851,6 @@ block();
 *Postconditions:* `transactions().empty()`.
 
 ### [bitcoin.block.obs] Observers
-
-```cpp
-[[nodiscard]] bitcoin::block_hash hash() const noexcept;
-```
-
-*Returns:* `header().hash()`.
 
 ```cpp
 [[nodiscard]] const bitcoin::block_header& header() const noexcept;

@@ -127,9 +127,6 @@ public:
   {
   }
 
-  [[nodiscard]] auto id() const noexcept -> txid;
-  [[nodiscard]] auto witness_id() const noexcept -> wtxid;
-
   [[nodiscard]] auto version() const noexcept -> std::int32_t;
   [[nodiscard]] auto locktime() const noexcept -> std::uint32_t;
   [[nodiscard]] auto inputs() const -> input_view;
@@ -144,6 +141,8 @@ public:
 private:
   std::shared_ptr<detail::transaction_data const> _data;
   friend struct _impl_access;
+  friend struct detail::txid_tag;
+  friend struct detail::wtxid_tag;
 };
 
 auto parse_transaction(std::span<std::byte const> raw)

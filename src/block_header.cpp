@@ -23,25 +23,26 @@ auto parse_block_header(std::span<std::byte const> raw)
   }
 
   auto header = block_header{};
-  header._version = core_header.nVersion;
-  header._prev_block_hash = bitcoin::block_hash{std::span<std::byte const, 32>{
+  header.version = core_header.nVersion;
+  header.prev_block_hash = bitcoin::block_hash{std::span<std::byte const, 32>{
     reinterpret_cast<std::byte const*>(core_header.hashPrevBlock.data()), 32}};
-  header._merkle_root = bitcoin::hash256{std::span<std::byte const, 32>{
+  header.merkle_root = bitcoin::hash256{std::span<std::byte const, 32>{
     reinterpret_cast<std::byte const*>(core_header.hashMerkleRoot.data()), 32}};
-  header._time = core_header.nTime;
-  header._bits = core_header.nBits;
-  header._nonce = core_header.nNonce;
+  header.time =
+    std::chrono::sys_seconds{std::chrono::seconds{core_header.nTime}};
+  header.bits = core_header.nBits;
+  header.nonce = core_header.nNonce;
   return header;
 }
 
 void serialize(block_header const& header, serialization::byte_sink_ref sink)
 {
-  ::Serialize(sink, header._version);
-  ::Serialize(sink, as_bytes(header._prev_block_hash));
-  ::Serialize(sink, as_bytes(header._merkle_root));
-  ::Serialize(sink, header._time);
-  ::Serialize(sink, header._bits);
-  ::Serialize(sink, header._nonce);
+  ::Serialize(sink, header.version);
+  ::Serialize(sink, as_bytes(header.prev_block_hash));
+  ::Serialize(sink, as_bytes(header.merkle_root));
+  ::Serialize(sink, uint32_t(header.time.time_since_epoch().count()));
+  ::Serialize(sink, header.bits);
+  ::Serialize(sink, header.nonce);
 }
 
 auto serialized_size(block_header const&) -> std::size_t
@@ -49,13 +50,17 @@ auto serialized_size(block_header const&) -> std::size_t
   return 80;
 }
 
-auto block_header::hash() const noexcept -> bitcoin::block_hash
+namespace detail {
+
+void detail::block_hash_tag::operator()(block_header const& hdr,
+                                        std::span<std::byte, 32> dst) const
 {
   auto hasher = HashWriter{};
-  serialize(*this, hasher);
+  serialize(hdr, hasher);
   auto const hash = hasher.GetHash();
-  return bitcoin::block_hash{std::span<std::byte const, 32>{
-    reinterpret_cast<std::byte const*>(hash.begin()), 32}};
+  std::ranges::transform(hash, dst.begin(),
+                         [](auto byte) { return std::byte{byte}; });
 }
 
+} // namespace detail
 } // namespace bitcoin

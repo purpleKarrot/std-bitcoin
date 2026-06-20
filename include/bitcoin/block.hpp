@@ -33,7 +33,6 @@ public:
   block();
   explicit block(detail::block_data data);
 
-  [[nodiscard]] auto hash() const noexcept -> block_hash;
   [[nodiscard]] auto header() const noexcept -> block_header const&;
   [[nodiscard]] auto transactions() const -> transaction_view;
 
@@ -51,5 +50,11 @@ private:
   -> std::optional<block>;
 void serialize(block const& b, serialization::byte_sink_ref sink);
 [[nodiscard]] auto serialized_size(block const& b) -> std::size_t;
+
+inline void detail::block_hash_tag::operator()(
+  block const& b, std::span<std::byte, 32> dst) const
+{
+  (*this)(b.header(), dst);
+}
 
 } // namespace bitcoin
