@@ -52,8 +52,8 @@ auto serialized_size(block_header const&) -> std::size_t
 
 namespace detail {
 
-void detail::block_hash_tag::operator()(block_header const& hdr,
-                                        std::span<std::byte, 32> dst) const
+void detail::block_hash_policy::operator()(block_header const& hdr,
+                                           std::span<std::byte, 32> dst) const
 {
   auto hasher = HashWriter{};
   serialize(hdr, hasher);

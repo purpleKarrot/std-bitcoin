@@ -70,15 +70,10 @@ public:
   [[nodiscard]] auto sequence() const noexcept -> std::uint32_t;
   [[nodiscard]] auto witness() const -> witness_view;
 
-  friend auto operator==(tx_input const& lhs, tx_input const& rhs) noexcept
-    -> bool;
+  friend bool operator==(tx_input const& lhs, tx_input const& rhs) noexcept;
 
   tx_input(std::shared_ptr<detail::transaction_data const> data,
-           std::size_t index) noexcept
-    : _data{std::move(data)}
-    , _index{index}
-  {
-  }
+           std::size_t index) noexcept;
 
 private:
   std::shared_ptr<detail::transaction_data const> _data;
@@ -93,15 +88,10 @@ public:
   [[nodiscard]] auto value() const noexcept -> amount;
   [[nodiscard]] auto script() const noexcept -> script_ref;
 
-  friend auto operator==(tx_output const& lhs, tx_output const& rhs) noexcept
-    -> bool;
+  friend bool operator==(tx_output const& lhs, tx_output const& rhs) noexcept;
 
   tx_output(std::shared_ptr<detail::transaction_data const> data,
-            std::size_t index) noexcept
-    : _data{std::move(data)}
-    , _index{index}
-  {
-  }
+            std::size_t index) noexcept;
 
 private:
   std::shared_ptr<detail::transaction_data const> _data;
@@ -122,18 +112,15 @@ public:
     beman::any_view::any_view<tx_output, sized_random_access, tx_output>;
 
   transaction();
-  explicit transaction(std::shared_ptr<detail::transaction_data const> data)
-    : _data(std::move(data))
-  {
-  }
+  explicit transaction(std::shared_ptr<detail::transaction_data const> data);
 
-  [[nodiscard]] auto version() const noexcept -> std::int32_t;
+  [[nodiscard]] auto version() const noexcept -> std::uint32_t;
   [[nodiscard]] auto locktime() const noexcept -> std::uint32_t;
   [[nodiscard]] auto inputs() const -> input_view;
   [[nodiscard]] auto outputs() const -> output_view;
 
-  friend auto operator==(transaction const& lhs,
-                         transaction const& rhs) noexcept -> bool;
+  friend bool operator==(transaction const& lhs,
+                         transaction const& rhs) noexcept;
   friend void serialize(transaction const& tx,
                         serialization::byte_sink_ref sink);
   friend auto serialized_size(transaction const& tx) -> std::size_t;
@@ -141,8 +128,8 @@ public:
 private:
   std::shared_ptr<detail::transaction_data const> _data;
   friend struct _impl_access;
-  friend struct detail::txid_tag;
-  friend struct detail::wtxid_tag;
+  friend struct detail::txid_policy;
+  friend struct detail::wtxid_policy;
 };
 
 auto parse_transaction(std::span<std::byte const> raw)

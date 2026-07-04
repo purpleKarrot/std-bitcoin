@@ -303,7 +303,7 @@ public:
     return value._bytes;
   }
 
-  friend auto operator==(script_ref lhs, script_ref rhs) noexcept -> bool
+  friend bool operator==(script_ref lhs, script_ref rhs) noexcept
   {
     return std::ranges::equal(as_bytes(lhs), as_bytes(rhs));
   }
@@ -333,7 +333,7 @@ public:
     return value._bytes;
   }
 
-  friend auto operator==(script const&, script const&) -> bool = default;
+  friend bool operator==(script const&, script const&) = default;
 
 private:
   void _append_size(std::size_t size);

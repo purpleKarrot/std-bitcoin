@@ -69,8 +69,6 @@ target_sources(stdbtc
   PUBLIC FILE_SET HEADERS BASE_DIRS include FILES
     include/bitcoin/detail/arrow_proxy.hpp
     include/bitcoin/detail/basic_hash_id.hpp
-    include/bitcoin/detail/chain_erasure.hpp
-    include/bitcoin/detail/erasure.hpp
     include/bitcoin/detail/iterator.hpp
     include/bitcoin/serialization/byte_sink.hpp
     include/bitcoin/amount.hpp
@@ -90,6 +88,7 @@ target_sources(stdbtc
     src/block_header.cpp
     src/chain.cpp
     src/opcode.cpp
+    src/predicates.cpp
     src/script.cpp
     src/transaction.cpp
     src/validation.cpp

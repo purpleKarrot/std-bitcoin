@@ -4,6 +4,7 @@
 
 #include <cassert>
 #include <ranges>
+#include <utility>
 
 #include "detail.hpp"
 #include "primitives/transaction.h"
@@ -20,6 +21,25 @@ auto as_CScript(bitcoin::script_ref script) -> CScript
 }
 
 } // namespace
+
+tx_input::tx_input(std::shared_ptr<detail::transaction_data const> data,
+                   std::size_t index) noexcept
+  : _data{std::move(data)}
+  , _index{index}
+{
+}
+
+tx_output::tx_output(std::shared_ptr<detail::transaction_data const> data,
+                     std::size_t index) noexcept
+  : _data{std::move(data)}
+  , _index{index}
+{
+}
+
+transaction::transaction(std::shared_ptr<detail::transaction_data const> data)
+  : _data(std::move(data))
+{
+}
 
 auto tx_input::prevout() const noexcept -> outpoint
 {
@@ -52,7 +72,7 @@ auto tx_input::witness() const -> witness_view
   return _data->vin[_index].scriptWitness.stack | std::views::transform(conv);
 }
 
-auto operator==(tx_input const& lhs, tx_input const& rhs) noexcept -> bool
+bool operator==(tx_input const& lhs, tx_input const& rhs) noexcept
 {
   if (lhs._data == rhs._data && lhs._index == rhs._index) {
     return true;
@@ -92,7 +112,7 @@ auto tx_output::script() const noexcept -> script_ref
   return script_ref{as_bytes(std::span{_data->vout[_index].scriptPubKey})};
 }
 
-auto operator==(tx_output const& lhs, tx_output const& rhs) noexcept -> bool
+bool operator==(tx_output const& lhs, tx_output const& rhs) noexcept
 {
   if (lhs._data == rhs._data && lhs._index == rhs._index) {
     return true;
@@ -112,23 +132,23 @@ transaction::transaction()
 {
 }
 
-void detail::txid_tag::operator()(bitcoin::transaction const& tx,
-                                  std::span<std::byte, 32ul> dst) const
+void detail::txid_policy::operator()(bitcoin::transaction const& tx,
+                                     std::span<std::byte, 32ul> dst) const
 {
   assert(tx._data != nullptr);
   auto const& hash = tx._data->GetHash();
   std::ranges::copy(hash, dst.begin());
 }
 
-void detail::wtxid_tag::operator()(bitcoin::transaction const& tx,
-                                   std::span<std::byte, 32ul> dst) const
+void detail::wtxid_policy::operator()(bitcoin::transaction const& tx,
+                                      std::span<std::byte, 32ul> dst) const
 {
   assert(tx._data != nullptr);
   auto const& hash = tx._data->GetWitnessHash();
   std::ranges::copy(hash, dst.begin());
 }
 
-auto transaction::version() const noexcept -> std::int32_t
+auto transaction::version() const noexcept -> std::uint32_t
 {
   assert(_data != nullptr);
   return _data->version;
@@ -158,7 +178,7 @@ auto transaction::outputs() const -> output_view
   });
 }
 
-auto operator==(transaction const& lhs, transaction const& rhs) noexcept -> bool
+bool operator==(transaction const& lhs, transaction const& rhs) noexcept
 {
   if (lhs._data == rhs._data) {
     return true;

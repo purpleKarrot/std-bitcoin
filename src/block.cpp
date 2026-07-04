@@ -55,7 +55,7 @@ auto block::transactions() const -> transaction_view
   return _data->vtx | std::views::transform(convert);
 }
 
-auto operator==(block const& lhs, block const& rhs) noexcept -> bool
+bool operator==(block const& lhs, block const& rhs) noexcept
 {
   if (lhs._data == rhs._data) {
     return true;
@@ -97,6 +97,12 @@ auto serialized_size(block const& b) -> std::size_t
 {
   assert(b._data != nullptr);
   return ::GetSerializeSize(TX_WITH_WITNESS(*b._data));
+}
+
+void detail::block_hash_policy::operator()(block const& b,
+                                           std::span<std::byte, 32> dst) const
+{
+  operator()(b.header(), dst);
 }
 
 } // namespace bitcoin

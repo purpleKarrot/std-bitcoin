@@ -36,7 +36,7 @@ public:
   [[nodiscard]] auto header() const noexcept -> block_header const&;
   [[nodiscard]] auto transactions() const -> transaction_view;
 
-  friend auto operator==(block const& lhs, block const& rhs) noexcept -> bool;
+  friend bool operator==(block const& lhs, block const& rhs) noexcept;
   friend void serialize(block const& b, serialization::byte_sink_ref sink);
   friend auto serialized_size(block const& b) -> std::size_t;
 
@@ -50,11 +50,5 @@ private:
   -> std::optional<block>;
 void serialize(block const& b, serialization::byte_sink_ref sink);
 [[nodiscard]] auto serialized_size(block const& b) -> std::size_t;
-
-inline void detail::block_hash_tag::operator()(
-  block const& b, std::span<std::byte, 32> dst) const
-{
-  (*this)(b.header(), dst);
-}
 
 } // namespace bitcoin

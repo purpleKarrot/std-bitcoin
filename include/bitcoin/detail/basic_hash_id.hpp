@@ -11,12 +11,12 @@
 
 namespace bitcoin::detail {
 
-template <class T, class Tag>
+template <class T, class Policy>
 concept is_hash_source = requires(T const& src, std::span<std::byte, 32> dst) {
-  { Tag{}(src, dst) };
+  { Policy{}(src, dst) };
 };
 
-template <class Tag>
+template <class Policy>
 class basic_hash_id
 {
 public:
@@ -28,10 +28,10 @@ public:
     std::ranges::copy(bytes, _value.begin());
   }
 
-  template <is_hash_source<Tag> T>
+  template <is_hash_source<Policy> T>
   explicit basic_hash_id(T const& src)
   {
-    Tag{}(src, _value);
+    Policy{}(src, _value);
   }
 
   [[nodiscard]] constexpr explicit operator bool() const noexcept

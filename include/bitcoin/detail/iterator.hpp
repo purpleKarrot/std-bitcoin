@@ -6,7 +6,7 @@
 #include <compare>
 #include <cstddef>
 #include <iterator>
-#include <ranges>
+#include <memory>
 #include <type_traits>
 #include <utility>
 
@@ -110,7 +110,7 @@ public:
     return lhs._index - rhs._index;
   }
 
-  friend constexpr auto operator==(iterator lhs, iterator rhs) noexcept -> bool
+  friend constexpr bool operator==(iterator lhs, iterator rhs) noexcept
   {
     assert(lhs._impl == rhs._impl);
     return lhs._index == rhs._index;
@@ -125,35 +125,6 @@ public:
 private:
   T const* _impl = nullptr;
   std::size_t _index = 0;
-};
-
-template <typename T>
-class random_access_view : public std::ranges::view_interface<T>
-{
-public:
-  using iterator = detail::iterator<T>;
-  using const_iterator = iterator;
-
-  [[nodiscard]] auto begin() const noexcept -> iterator
-  {
-    return iterator(derived(), 0);
-  }
-
-  [[nodiscard]] auto end() const noexcept(noexcept(derived().size()))
-    -> iterator
-  {
-    return iterator(derived(), derived().size());
-  }
-
-private:
-  random_access_view() = default;
-
-  [[nodiscard]] auto derived() const noexcept -> T const&
-  {
-    return static_cast<T const&>(*this);
-  }
-
-  friend T;
 };
 
 } // namespace bitcoin::detail
