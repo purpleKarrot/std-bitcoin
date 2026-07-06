@@ -31,8 +31,8 @@ public:
   ~any_chain_view();
 
   template <typename T>
-    requires(chain_view<std::remove_cvref_t<T>>
-             && !std::same_as<std::remove_cvref_t<T>, any_chain_view>)
+    requires(!std::same_as<std::remove_cvref_t<T>, any_chain_view>
+             && chain_view<std::remove_cvref_t<T>>)
   explicit any_chain_view(T&& object)
   {
     if (std::ranges::empty(object)) {
