@@ -8,6 +8,7 @@
 #include <optional>
 #include <span>
 
+#include <bitcoin/detail/byte_sink_ref.hpp>
 #include <bitcoin/hash_id.hpp>
 #include <bitcoin/serialization/byte_sink.hpp>
 
@@ -30,7 +31,19 @@ struct block_header
 
 [[nodiscard]] auto parse_block_header(std::span<std::byte const> raw)
   -> std::optional<block_header>;
-void serialize(block_header const& header, serialization::byte_sink_ref sink);
+
+namespace detail {
+
+void serialize(block_header const& header, byte_sink_ref sink);
+
+} // namespace detail
+
+template <serialization::byte_sink Sink>
+void serialize(block_header const& header, Sink& sink)
+{
+  detail::serialize(header, detail::byte_sink_ref{sink});
+}
+
 [[nodiscard]] auto serialized_size(block_header const& header) -> std::size_t;
 
 } // namespace bitcoin

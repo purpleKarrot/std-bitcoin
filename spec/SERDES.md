@@ -175,6 +175,11 @@ paper already provides the relevant hash observers. The purpose of the
 sink-based design is to permit efficient implementation of those observers and
 of `serialized_size` without requiring an intermediate byte container.
 
+The serialization entry points are specified as constrained function templates
+(`template<serialization::byte_sink Sink> void serialize(..., Sink& sink)`).
+An implementation may use a type-erasing adapter such as a `byte_sink_ref`
+internally, but such an adapter is not part of the standardized interface.
+
 ## Canonical serialization
 
 For transactions, two related serializations exist: the legacy witness-stripped
@@ -205,14 +210,6 @@ namespace bitcoin {
       concept byte_sink = requires(Sink& sink, std::span<const std::byte> bytes) {
         sink.write(bytes);
       };
-
-    class byte_sink_ref {
-    public:
-      template<byte_sink Sink>
-        byte_sink_ref(Sink& sink) noexcept;
-
-      void write(std::span<const std::byte> bytes);
-    };
   }
 
   [[nodiscard]] std::optional<transaction>
@@ -224,28 +221,28 @@ namespace bitcoin {
   [[nodiscard]] std::optional<block>
     parse_block(std::span<const std::byte> raw);
 
-  void serialize(const transaction& tx, serialization::byte_sink_ref sink);
+  template<serialization::byte_sink Sink>
+    void serialize(const transaction& tx, Sink& sink);
   [[nodiscard]] std::size_t serialized_size(const transaction& tx);
 
-  void serialize(const block_header& h, serialization::byte_sink_ref sink);
+  template<serialization::byte_sink Sink>
+    void serialize(const block_header& h, Sink& sink);
   [[nodiscard]] std::size_t serialized_size(const block_header& h);
 
-  void serialize(const block& b, serialization::byte_sink_ref sink);
+  template<serialization::byte_sink Sink>
+    void serialize(const block& b, Sink& sink);
   [[nodiscard]] std::size_t serialized_size(const block& b);
 
 } // namespace bitcoin
 ```
 
-## [bitcoin.serialization.byte.sink] Byte sink adapter
+## [bitcoin.serialization.byte.sink] Byte sink concept
 
 ### [bitcoin.serialization.byte.sink.overview]
 
 `serialization::byte_sink` is satisfied by a type `Sink` if the expression
 `sink.write(bytes)` is well-formed for an lvalue `sink` of type `Sink` and a
 value `bytes` of type `std::span<const std::byte>`.
-
-`serialization::byte_sink_ref` is a non-owning wrapper referring to an object
-that satisfies `serialization::byte_sink`.
 
 ### [bitcoin.serialization.byte.sink.syn] Synopsis
 
@@ -257,36 +254,8 @@ namespace bitcoin::serialization {
       sink.write(bytes);
     };
 
-  class byte_sink_ref {
-  public:
-    template<byte_sink Sink>
-      byte_sink_ref(Sink& sink) noexcept;
-
-    void write(std::span<const std::byte> bytes);
-  };
-
 } // namespace bitcoin::serialization
 ```
-
-### [bitcoin.serialization.byte.sink.cons] Constructors
-
-```cpp
-template<byte_sink Sink>
-  byte_sink_ref(Sink& sink) noexcept;
-```
-
-*Effects:* Constructs a `byte_sink_ref` that refers to `sink`.
-
-*Remarks:* `byte_sink_ref` does not own `sink`. The program is responsible for
-ensuring that the referred-to sink outlives the `byte_sink_ref`.
-
-### [bitcoin.serialization.byte.sink.ops] Operations
-
-```cpp
-void write(std::span<const std::byte> bytes);
-```
-
-*Effects:* Equivalent to invoking `write(bytes)` on the referred-to sink.
 
 ## [bitcoin.parse.transaction] Parsing transactions
 
@@ -325,7 +294,8 @@ complete transaction has been parsed.
 ```cpp
 namespace bitcoin {
 
-  void serialize(const transaction& tx, serialization::byte_sink_ref sink);
+  template<serialization::byte_sink Sink>
+    void serialize(const transaction& tx, Sink& sink);
   [[nodiscard]] std::size_t serialized_size(const transaction& tx);
 
 } // namespace bitcoin
@@ -334,7 +304,8 @@ namespace bitcoin {
 ### [bitcoin.serialize.transaction.func] Function `serialize`
 
 ```cpp
-void serialize(const transaction& tx, serialization::byte_sink_ref sink);
+template<serialization::byte_sink Sink>
+  void serialize(const transaction& tx, Sink& sink);
 ```
 
 *Effects:* Writes the wire-format encoding of `tx` to `sink`.
@@ -392,7 +363,8 @@ remaining after one complete block header has been parsed.
 ```cpp
 namespace bitcoin {
 
-  void serialize(const block_header& h, serialization::byte_sink_ref sink);
+  template<serialization::byte_sink Sink>
+    void serialize(const block_header& h, Sink& sink);
   [[nodiscard]] std::size_t serialized_size(const block_header& h);
 
 } // namespace bitcoin
@@ -401,7 +373,8 @@ namespace bitcoin {
 ### [bitcoin.serialize.block.header.func] Function `serialize`
 
 ```cpp
-void serialize(const block_header& h, serialization::byte_sink_ref sink);
+template<serialization::byte_sink Sink>
+  void serialize(const block_header& h, Sink& sink);
 ```
 
 *Effects:* Writes the wire-format encoding of `h` to `sink`.
@@ -455,7 +428,8 @@ trailing bytes remaining after one complete block has been parsed.
 ```cpp
 namespace bitcoin {
 
-  void serialize(const block& b, serialization::byte_sink_ref sink);
+  template<serialization::byte_sink Sink>
+    void serialize(const block& b, Sink& sink);
   [[nodiscard]] std::size_t serialized_size(const block& b);
 
 } // namespace bitcoin
@@ -464,7 +438,8 @@ namespace bitcoin {
 ### [bitcoin.serialize.block.func] Function `serialize`
 
 ```cpp
-void serialize(const block& b, serialization::byte_sink_ref sink);
+template<serialization::byte_sink Sink>
+  void serialize(const block& b, Sink& sink);
 ```
 
 *Effects:* Writes the wire-format encoding of `b` to `sink`.

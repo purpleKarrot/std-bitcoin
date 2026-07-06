@@ -87,7 +87,7 @@ auto parse_block(std::span<std::byte const> raw) -> std::optional<block>
   }
 }
 
-void serialize(block const& b, serialization::byte_sink_ref sink)
+void detail::serialize(block const& b, byte_sink_ref sink)
 {
   assert(b._data != nullptr);
   ::Serialize(sink, TX_WITH_WITNESS(*b._data));

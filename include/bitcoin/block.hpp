@@ -14,9 +14,13 @@
 #include <bitcoin/transaction.hpp>
 
 namespace bitcoin {
+
+class block;
+
 namespace detail {
 
 struct block_data;
+void serialize(block const& b, byte_sink_ref sink);
 
 } // namespace detail
 
@@ -37,7 +41,7 @@ public:
   [[nodiscard]] auto transactions() const -> transaction_view;
 
   friend bool operator==(block const& lhs, block const& rhs) noexcept;
-  friend void serialize(block const& b, serialization::byte_sink_ref sink);
+  friend void detail::serialize(block const& b, detail::byte_sink_ref sink);
   friend auto serialized_size(block const& b) -> std::size_t;
 
 private:
@@ -48,7 +52,13 @@ private:
 
 [[nodiscard]] auto parse_block(std::span<std::byte const> raw)
   -> std::optional<block>;
-void serialize(block const& b, serialization::byte_sink_ref sink);
+
+template <serialization::byte_sink Sink>
+void serialize(block const& b, Sink& sink)
+{
+  detail::serialize(b, detail::byte_sink_ref{sink});
+}
+
 [[nodiscard]] auto serialized_size(block const& b) -> std::size_t;
 
 } // namespace bitcoin

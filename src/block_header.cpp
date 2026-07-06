@@ -35,7 +35,7 @@ auto parse_block_header(std::span<std::byte const> raw)
   return header;
 }
 
-void serialize(block_header const& header, serialization::byte_sink_ref sink)
+void detail::serialize(block_header const& header, byte_sink_ref sink)
 {
   ::Serialize(sink, header.version);
   ::Serialize(sink, as_bytes(header.prev_block_hash));

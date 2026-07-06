@@ -208,7 +208,7 @@ auto parse_transaction(std::span<std::byte const> raw)
   }
 }
 
-void serialize(transaction const& tx, serialization::byte_sink_ref sink)
+void detail::serialize(transaction const& tx, byte_sink_ref sink)
 {
   assert(tx._data != nullptr);
   ::Serialize(sink, TX_WITH_WITNESS(*tx._data));

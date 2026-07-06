@@ -69,6 +69,7 @@ target_sources(stdbtc
   PUBLIC FILE_SET HEADERS BASE_DIRS include FILES
     include/bitcoin/detail/arrow_proxy.hpp
     include/bitcoin/detail/basic_hash_id.hpp
+    include/bitcoin/detail/byte_sink_ref.hpp
     include/bitcoin/detail/iterator.hpp
     include/bitcoin/serialization/byte_sink.hpp
     include/bitcoin/amount.hpp

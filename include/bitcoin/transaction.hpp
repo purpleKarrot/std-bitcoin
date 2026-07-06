@@ -15,14 +15,19 @@
 #include <beman/any_view/any_view.hpp>
 
 #include <bitcoin/amount.hpp>
+#include <bitcoin/detail/byte_sink_ref.hpp>
 #include <bitcoin/hash_id.hpp>
 #include <bitcoin/script.hpp>
 #include <bitcoin/serialization/byte_sink.hpp>
 
 namespace bitcoin {
+
+class transaction;
+
 namespace detail {
 
 struct transaction_data;
+void serialize(transaction const& tx, byte_sink_ref sink);
 
 } // namespace detail
 
@@ -121,8 +126,8 @@ public:
 
   friend bool operator==(transaction const& lhs,
                          transaction const& rhs) noexcept;
-  friend void serialize(transaction const& tx,
-                        serialization::byte_sink_ref sink);
+  friend void detail::serialize(transaction const& tx,
+                                detail::byte_sink_ref sink);
   friend auto serialized_size(transaction const& tx) -> std::size_t;
 
 private:
@@ -135,7 +140,12 @@ private:
 auto parse_transaction(std::span<std::byte const> raw)
   -> std::optional<transaction>;
 
-void serialize(transaction const& tx, serialization::byte_sink_ref sink);
+template <serialization::byte_sink Sink>
+void serialize(transaction const& tx, Sink& sink)
+{
+  detail::serialize(tx, detail::byte_sink_ref{sink});
+}
+
 auto serialized_size(transaction const& tx) -> std::size_t;
 
 } // namespace bitcoin
