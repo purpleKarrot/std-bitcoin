@@ -1,7 +1,5 @@
 // SPDX-License-Identifier: BSL-1.0
 
-#include <bitcoin/chain.hpp>
-
 #include <algorithm>
 #include <array>
 #include <span>
@@ -10,6 +8,8 @@
 #include <vector>
 
 #include <doctest/doctest.h>
+
+#include <bitcoin/any_chain_view.hpp>
 
 namespace {
 

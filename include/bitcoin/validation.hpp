@@ -10,9 +10,9 @@
 #include <beman/any_view/any_view_options.hpp>
 
 #include <bitcoin/amount.hpp>
+#include <bitcoin/any_chain_view.hpp>
 #include <bitcoin/block.hpp>
 #include <bitcoin/block_header.hpp>
-#include <bitcoin/chain.hpp>
 #include <bitcoin/script.hpp>
 #include <bitcoin/transaction.hpp>
 

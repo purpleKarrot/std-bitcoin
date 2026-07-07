@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: BSL-1.0
 
-#include <bitcoin/chain.hpp>
+#include <bitcoin/any_chain_view.hpp>
 
 namespace bitcoin {
+
+static_assert(chain_view<any_chain_view>);
 
 any_chain_view::any_chain_view(any_chain_view const& other)
   : _vtable(other._vtable)

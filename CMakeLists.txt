@@ -73,9 +73,10 @@ target_sources(stdbtc
     include/bitcoin/detail/iterator.hpp
     include/bitcoin/serialization/byte_sink.hpp
     include/bitcoin/amount.hpp
+    include/bitcoin/any_chain_view.hpp
     include/bitcoin/block.hpp
     include/bitcoin/block_header.hpp
-    include/bitcoin/chain.hpp
+    include/bitcoin/chain_view.hpp
     include/bitcoin/hash_id.hpp
     include/bitcoin/predicates.hpp
     include/bitcoin/script.hpp
@@ -84,10 +85,10 @@ target_sources(stdbtc
     include/bitcoin.hpp
   PRIVATE
     src/amount.cpp
+    src/any_chain_view.cpp
     src/basic_hash_id.cpp
     src/block.cpp
     src/block_header.cpp
-    src/chain.cpp
     src/opcode.cpp
     src/predicates.cpp
     src/script.cpp

@@ -5,15 +5,10 @@
 #include <ranges>
 
 #include <bitcoin/block_header.hpp>
+#include <bitcoin/chain_view.hpp>
 #include <bitcoin/detail/iterator.hpp>
 
 namespace bitcoin {
-
-template <typename T>
-concept chain_view = std::ranges::view<T>
-  && std::ranges::random_access_range<T const>
-  && std::ranges::sized_range<T const>
-  && std::convertible_to<std::ranges::range_reference_t<T const>, block_header>;
 
 class any_chain_view : public std::ranges::view_interface<any_chain_view>
 {

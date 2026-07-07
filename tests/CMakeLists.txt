@@ -9,7 +9,7 @@ FetchContent_MakeAvailable(doctest)
 add_executable(stdbtc-tests
   amount.cpp
   block.cpp
-  chain.cpp
+  chain_view.cpp
   hash_id.cpp
   script.cpp
   transaction.cpp
