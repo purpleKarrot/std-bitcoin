@@ -8,7 +8,6 @@
 #include <optional>
 #include <span>
 
-#include <bitcoin/detail/byte_sink_ref.hpp>
 #include <bitcoin/hash_id.hpp>
 #include <bitcoin/serialization/byte_sink.hpp>
 

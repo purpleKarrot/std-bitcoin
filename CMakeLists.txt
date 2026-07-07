@@ -63,18 +63,15 @@ target_link_libraries(stdbtc
   )
 
 FetchContent_GetProperties(BitcoinCore SOURCE_DIR BitcoinCore_SOURCE_DIR)
-target_include_directories(stdbtc PRIVATE ${BitcoinCore_SOURCE_DIR}/src)
+target_include_directories(stdbtc PRIVATE
+  ${BitcoinCore_SOURCE_DIR}/src
+  /opt/homebrew/Cellar/boost/1.90.0_1/include/
+  )
 
 target_sources(stdbtc
   PUBLIC FILE_SET HEADERS BASE_DIRS include FILES
-    include/bitcoin/detail/arrow_proxy.hpp
-    include/bitcoin/detail/basic_hash_id.hpp
-    include/bitcoin/detail/byte_sink_ref.hpp
-    include/bitcoin/detail/coin_index_ref.hpp
-    include/bitcoin/detail/iterator.hpp
     include/bitcoin/serialization/byte_sink.hpp
     include/bitcoin/amount.hpp
-    include/bitcoin/any_chain_view.hpp
     include/bitcoin/block.hpp
     include/bitcoin/block_header.hpp
     include/bitcoin/chain_view.hpp
@@ -91,11 +88,9 @@ target_sources(stdbtc
     include/bitcoin/validation_status.hpp
     include/bitcoin.hpp
   PRIVATE
-    src/amount.cpp
-    src/any_chain_view.cpp
-    src/basic_hash_id.cpp
     src/block.cpp
     src/block_header.cpp
+    src/hash_id.cpp
     src/opcode.cpp
     src/predicates.cpp
     src/script.cpp

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSL-1.0
 
-#include <bitcoin/detail/basic_hash_id.hpp> // IWYU pragma: export
+#include <bitcoin/hash_id.hpp>
 
 #include <array>
 #include <cstddef>

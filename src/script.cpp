@@ -170,16 +170,6 @@ struct parsed_instruction
 
 } // namespace
 
-script::script(std::span<std::byte const> bytes)
-  : _bytes(bytes.begin(), bytes.end())
-{
-}
-
-script::script(script_ref value)
-  : script(as_bytes(value))
-{
-}
-
 auto instruction_view::iterator::operator*() const noexcept -> value_type
 {
   return _current;

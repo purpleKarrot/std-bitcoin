@@ -13,7 +13,6 @@
 #include <doctest/doctest.h>
 
 #include <bitcoin/coin_index.hpp>
-#include <bitcoin/detail/coin_index_ref.hpp>
 
 namespace {
 

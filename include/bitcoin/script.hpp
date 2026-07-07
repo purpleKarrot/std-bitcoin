@@ -289,6 +289,7 @@ public:
     : _bytes(bytes)
   {
   }
+
   script_ref(script const& value) noexcept;
   script_ref(script&&) = delete;
   script_ref(script const&&) = delete;
@@ -298,12 +299,13 @@ public:
     return _bytes.empty();
   }
 
-  friend auto as_bytes(script_ref value) noexcept -> std::span<std::byte const>
+  friend constexpr auto as_bytes(script_ref value) noexcept
+    -> std::span<std::byte const>
   {
     return value._bytes;
   }
 
-  friend bool operator==(script_ref lhs, script_ref rhs) noexcept
+  friend constexpr bool operator==(script_ref lhs, script_ref rhs) noexcept
   {
     return std::ranges::equal(as_bytes(lhs), as_bytes(rhs));
   }
@@ -315,19 +317,30 @@ private:
 class script
 {
 public:
-  script() noexcept = default;
-  explicit script(std::span<std::byte const> bytes);
-  explicit script(script_ref value);
+  constexpr script() noexcept = default;
+  explicit constexpr script(std::span<std::byte const> bytes)
+    : _bytes(bytes.begin(), bytes.end())
+  {
+  }
 
-  [[nodiscard]] auto empty() const noexcept -> bool { return _bytes.empty(); }
-  auto clear() noexcept -> void { _bytes.clear(); }
+  explicit constexpr script(script_ref value)
+    : script(as_bytes(value))
+  {
+  }
+
+  [[nodiscard]] constexpr auto empty() const noexcept -> bool
+  {
+    return _bytes.empty();
+  }
+
+  constexpr void clear() noexcept { _bytes.clear(); }
 
   auto append(opcode code) -> script&;
   auto append_data(std::span<std::byte const> data) -> script&;
   auto append_number(std::int64_t value) -> script&;
   auto append(script_ref suffix) -> script&;
 
-  friend auto as_bytes(script const& value) noexcept
+  friend constexpr auto as_bytes(script const& value) noexcept
     -> std::span<std::byte const>
   {
     return value._bytes;

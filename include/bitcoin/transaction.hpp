@@ -15,7 +15,6 @@
 #include <beman/any_view/any_view.hpp>
 
 #include <bitcoin/amount.hpp>
-#include <bitcoin/detail/byte_sink_ref.hpp>
 #include <bitcoin/hash_id.hpp>
 #include <bitcoin/script.hpp>
 #include <bitcoin/serialization/byte_sink.hpp>
