@@ -49,7 +49,7 @@ auto as_CScript(bitcoin::script_ref script) -> CScript
 
 namespace bitcoin {
 
-validation_status verify(block_header const& header)
+validation_status verifier::verify(block_header const& header) const
 {
   auto params = CChainParams::Main()->GetConsensus();
   auto const bytes = as_bytes(block_hash{header});
@@ -64,7 +64,7 @@ validation_status verify(block_header const& header)
 // {
 // }
 
-validation_status verify(bitcoin::block const& block)
+validation_status verifier::verify(bitcoin::block const& block) const
 {
   auto state = BlockValidationState{};
   auto params = CChainParams::Main()->GetConsensus();
@@ -77,7 +77,7 @@ validation_status verify(bitcoin::block const& block)
 // {
 // }
 
-validation_status verify(bitcoin::transaction const& tx)
+validation_status verifier::verify(bitcoin::transaction const& tx) const
 {
   auto state = TxValidationState{};
   bool const ok = CheckTransaction(_impl_access::get(tx), state);
@@ -89,13 +89,11 @@ validation_status verify(bitcoin::transaction const& tx)
 // {
 // }
 
-validation_status verify(
-  script_ref script, amount value, transaction const& tx_to,
-  std::size_t input_index, validation_flags flags,
-  beman::any_view::any_view<tx_output const,
-                            beman::any_view::any_view_options::random_access
-                              | beman::any_view::any_view_options::sized>
-    prevouts)
+validation_status verifier::verify(script_ref script, amount value,
+                                   transaction const& tx_to,
+                                   std::size_t input_index,
+                                   validation_flags flags,
+                                   any_prevouts_view prevouts) const
 {
   // Assert that all specified flags are part of the interface before continuing
   assert(!is_set(flags, ~validation_flags::all));

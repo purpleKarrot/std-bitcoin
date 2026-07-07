@@ -80,6 +80,7 @@ target_sources(stdbtc
     include/bitcoin/chain_view.hpp
     include/bitcoin/coin.hpp
     include/bitcoin/coin_index.hpp
+    include/bitcoin/consensus_parameters.hpp
     include/bitcoin/hash_id.hpp
     include/bitcoin/predicates.hpp
     include/bitcoin/script.hpp
