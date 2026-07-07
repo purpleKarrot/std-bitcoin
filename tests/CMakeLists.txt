@@ -10,6 +10,7 @@ add_executable(stdbtc-tests
   amount.cpp
   block.cpp
   chain_view.cpp
+  coin.cpp
   hash_id.cpp
   script.cpp
   transaction.cpp

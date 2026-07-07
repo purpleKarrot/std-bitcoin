@@ -70,6 +70,7 @@ target_sources(stdbtc
     include/bitcoin/detail/arrow_proxy.hpp
     include/bitcoin/detail/basic_hash_id.hpp
     include/bitcoin/detail/byte_sink_ref.hpp
+    include/bitcoin/detail/coin_index_ref.hpp
     include/bitcoin/detail/iterator.hpp
     include/bitcoin/serialization/byte_sink.hpp
     include/bitcoin/amount.hpp
@@ -77,6 +78,8 @@ target_sources(stdbtc
     include/bitcoin/block.hpp
     include/bitcoin/block_header.hpp
     include/bitcoin/chain_view.hpp
+    include/bitcoin/coin.hpp
+    include/bitcoin/coin_index.hpp
     include/bitcoin/hash_id.hpp
     include/bitcoin/predicates.hpp
     include/bitcoin/script.hpp
