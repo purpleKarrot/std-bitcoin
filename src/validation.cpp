@@ -14,22 +14,16 @@
 
 namespace {
 
-[[nodiscard]] constexpr bitcoin::verification_flags operator&(
-  bitcoin::verification_flags l, bitcoin::verification_flags r) noexcept
+[[nodiscard]] constexpr bitcoin::validation_flags operator~(
+  bitcoin::validation_flags f) noexcept
 {
-  return bitcoin::verification_flags(static_cast<int>(l) & static_cast<int>(r));
+  return bitcoin::validation_flags(~static_cast<int>(f));
 }
 
-[[nodiscard]] constexpr bitcoin::verification_flags operator~(
-  bitcoin::verification_flags f) noexcept
+constexpr bool is_set(bitcoin::validation_flags f,
+                      bitcoin::validation_flags flag) noexcept
 {
-  return bitcoin::verification_flags(~static_cast<int>(f));
-}
-
-constexpr bool is_set(bitcoin::verification_flags f,
-                      bitcoin::verification_flags flag) noexcept
-{
-  return (f & flag) != bitcoin::verification_flags::none;
+  return (static_cast<int>(f) & static_cast<int>(flag)) != 0;
 }
 
 bool is_valid_flag_combination(script_verify_flags flags)
@@ -55,7 +49,7 @@ auto as_CScript(bitcoin::script_ref script) -> CScript
 
 namespace bitcoin {
 
-verification_status verify(block_header const& header)
+validation_status verify(block_header const& header)
 {
   auto params = CChainParams::Main()->GetConsensus();
   auto const bytes = as_bytes(block_hash{header});
@@ -65,12 +59,12 @@ verification_status verify(block_header const& header)
   return result ? 0 : -1; // BlockValidationResult::BLOCK_INVALID_HEADER
 }
 
-// verification_status verify(block_header const& header, any_chain_view chain,
+// validation_status verify(block_header const& header, any_chain_view chain,
 //                            std::chrono::sys_seconds now)
 // {
 // }
 
-verification_status verify(bitcoin::block const& block)
+validation_status verify(bitcoin::block const& block)
 {
   auto state = BlockValidationState{};
   auto params = CChainParams::Main()->GetConsensus();
@@ -78,40 +72,40 @@ verification_status verify(bitcoin::block const& block)
   return result ? 0 : -1; // state.GetResult();
 }
 
-// verification_status verify(bitcoin::block const& block, any_chain_view chain,
+// validation_status verify(bitcoin::block const& block, any_chain_view chain,
 //                            std::chrono::sys_seconds now)
 // {
 // }
 
-verification_status verify(bitcoin::transaction const& tx)
+validation_status verify(bitcoin::transaction const& tx)
 {
   auto state = TxValidationState{};
   bool const ok = CheckTransaction(_impl_access::get(tx), state);
   return ok ? 0 : -1; // state.GetResult();
 }
 
-// verification_status verify(
+// validation_status verify(
 //   bitcoin::transaction const& tx, any_chain_view chain)
 // {
 // }
 
-verification_status verify(
+validation_status verify(
   script_ref script, amount value, transaction const& tx_to,
-  std::size_t input_index, verification_flags flags,
+  std::size_t input_index, validation_flags flags,
   beman::any_view::any_view<tx_output const,
                             beman::any_view::any_view_options::random_access
                               | beman::any_view::any_view_options::sized>
     prevouts)
 {
   // Assert that all specified flags are part of the interface before continuing
-  assert(!is_set(flags, ~verification_flags::all));
+  assert(!is_set(flags, ~validation_flags::all));
 
   if (!is_valid_flag_combination(
         script_verify_flags::from_int(static_cast<int>(flags)))) {
     throw std::invalid_argument("Invalid flag combination");
   }
 
-  if (is_set(flags, verification_flags::taproot) && prevouts.empty()) {
+  if (is_set(flags, validation_flags::taproot) && prevouts.empty()) {
     throw std::invalid_argument("Spent outputs required for taproot");
   }
 
@@ -128,7 +122,7 @@ verification_status verify(
   assert(input_index < tx.vin.size());
   PrecomputedTransactionData txdata{tx};
 
-  if (!spent_outputs.empty() && is_set(flags, verification_flags::taproot)) {
+  if (!spent_outputs.empty() && is_set(flags, validation_flags::taproot)) {
     txdata.Init(tx, std::move(spent_outputs));
   }
 
@@ -145,44 +139,3 @@ verification_status verify(
 }
 
 } // namespace bitcoin
-
-std::format_context::iterator
-std::formatter<bitcoin::verification_flags>::format(
-  bitcoin::verification_flags flags, std::format_context& ctx) const
-{
-  if (flags == bitcoin::verification_flags::none) {
-    return std::formatter<string_view>::format("NONE", ctx);
-  }
-
-  using bitcoin::verification_flags;
-  static constexpr auto entries = std::array{
-    std::pair{verification_flags::p2sh, "P2SH"},
-    std::pair{verification_flags::dersig, "DERSIG"},
-    std::pair{verification_flags::nulldummy, "NULLDUMMY"},
-    std::pair{verification_flags::checklocktimeverify, "CHECKLOCKTIMEVERIFY"},
-    std::pair{verification_flags::checksequenceverify, "CHECKSEQUENCEVERIFY"},
-    std::pair{verification_flags::witness, "WITNESS"},
-    std::pair{verification_flags::taproot, "TAPROOT"},
-  };
-
-  bool empty = true;
-  for (auto const& [f, name] : entries) {
-    if (is_set(flags, f)) {
-      if (!empty) {
-        *ctx.out()++ = '|';
-      }
-      std::formatter<string_view>::format(name, ctx);
-      empty = false;
-    }
-  }
-
-  return ctx.out();
-}
-
-std::format_context::iterator
-std::formatter<bitcoin::verification_status>::format(
-  bitcoin::verification_status status, std::format_context& ctx) const
-{
-  auto str = status ? "OK" : "NOT OK";
-  return std::formatter<string_view>::format(str, ctx);
-}

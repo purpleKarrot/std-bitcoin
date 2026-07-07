@@ -11,7 +11,7 @@
 #include "hex.hpp"
 
 using namespace hex_literal;
-using flags = bitcoin::verification_flags;
+using flags = bitcoin::validation_flags;
 using bitcoin::verify;
 
 namespace {
@@ -27,12 +27,6 @@ namespace {
 }
 
 } // namespace
-
-TEST_CASE("verification_flags string conversion")
-{
-  CHECK(std::format("{}", flags::none) == "NONE");
-  CHECK(std::format("{}", flags::witness | flags::p2sh) == "P2SH|WITNESS");
-}
 
 TEST_CASE("p2pkh verification")
 {

@@ -85,6 +85,9 @@ target_sources(stdbtc
     include/bitcoin/script.hpp
     include/bitcoin/transaction.hpp
     include/bitcoin/validation.hpp
+    include/bitcoin/validation_flags.hpp
+    include/bitcoin/validation_result.hpp
+    include/bitcoin/validation_status.hpp
     include/bitcoin.hpp
   PRIVATE
     src/amount.cpp
@@ -97,6 +100,8 @@ target_sources(stdbtc
     src/script.cpp
     src/transaction.cpp
     src/validation.cpp
+    src/validation_flags.cpp
+    src/validation_status.cpp
   )
 
 add_subdirectory(tests)
