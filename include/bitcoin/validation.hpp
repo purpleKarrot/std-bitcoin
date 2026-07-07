@@ -5,6 +5,8 @@
 #include <chrono>
 #include <cstdint>
 #include <format>
+#include <type_traits>
+#include <utility>
 
 #include <beman/any_view/any_view.hpp>
 #include <beman/any_view/any_view_options.hpp>
@@ -43,11 +45,12 @@ public:
     return verify(h);
   }
 
-  template <chain_view Chain>
-  [[nodiscard]] auto operator()(block_header const& h, Chain const& chain,
+  template <typename Chain>
+    requires chain_view<std::remove_cvref_t<Chain>>
+  [[nodiscard]] auto operator()(block_header const& h, Chain&& chain,
                                 std::chrono::sys_seconds now) const
   {
-    return verify(h, chain, now);
+    return verify(h, std::forward<Chain>(chain), now);
   }
 
   //
@@ -56,19 +59,23 @@ public:
 
   [[nodiscard]] auto operator()(block const& b) const { return verify(b); }
 
-  template <chain_view Chain>
-  [[nodiscard]] auto operator()(block const& b, Chain const& chain,
+  template <typename Chain>
+    requires chain_view<std::remove_cvref_t<Chain>>
+  [[nodiscard]] auto operator()(block const& b, Chain&& chain,
                                 std::chrono::sys_seconds now) const
   {
-    return verify(b, chain, now);
+    return verify(b, std::forward<Chain>(chain), now);
   }
 
-  template <chain_view Chain, coin_index Coins>
-  [[nodiscard]] auto operator()(block const& b, Chain const& chain,
+  template <typename Chain, typename Coins>
+    requires chain_view<std::remove_cvref_t<Chain>>
+    && coin_index<std::remove_cvref_t<Coins>>
+  [[nodiscard]] auto operator()(block const& b, Chain&& chain,
                                 std::chrono::sys_seconds now,
-                                Coins const& coins) const
+                                Coins&& coins) const
   {
-    return verify(b, chain, now, coins);
+    return verify(b, std::forward<Chain>(chain), now,
+                  std::forward<Coins>(coins));
   }
 
   //
@@ -80,17 +87,20 @@ public:
     return verify(tx);
   }
 
-  template <chain_view Chain>
-  [[nodiscard]] auto operator()(transaction const& tx, Chain const& chain) const
+  template <typename Chain>
+    requires chain_view<std::remove_cvref_t<Chain>>
+  [[nodiscard]] auto operator()(transaction const& tx, Chain&& chain) const
   {
-    return verify(tx, chain);
+    return verify(tx, std::forward<Chain>(chain));
   }
 
-  template <chain_view Chain, coin_index Coins>
-  [[nodiscard]] auto operator()(transaction const& tx, Chain const& chain,
-                                Coins const& coins) const
+  template <typename Chain, typename Coins>
+    requires chain_view<std::remove_cvref_t<Chain>>
+    && coin_index<std::remove_cvref_t<Coins>>
+  [[nodiscard]] auto operator()(transaction const& tx, Chain&& chain,
+                                Coins&& coins) const
   {
-    return verify(tx, chain, coins);
+    return verify(tx, std::forward<Chain>(chain), std::forward<Coins>(coins));
   }
 
   //
@@ -108,9 +118,10 @@ public:
   [[nodiscard]] auto operator()(script_ref script, amount value,
                                 transaction const& tx, std::size_t input_index,
                                 validation_flags flags,
-                                Prevouts const& prevouts) const
+                                Prevouts&& prevouts) const
   {
-    return verify(script, value, tx, input_index, flags, prevouts);
+    return verify(script, value, tx, input_index, flags,
+                  std::forward<Prevouts>(prevouts));
   }
 
 private:
