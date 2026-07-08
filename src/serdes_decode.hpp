@@ -1,0 +1,266 @@
+// SPDX-License-Identifier: BSL-1.0
+
+#pragma once
+
+#include <bit>
+#include <concepts>
+#include <cstddef>
+#include <cstdint>
+#include <cstring>
+#include <memory>
+#include <span>
+#include <type_traits>
+#include <vector>
+
+#include <bitcoin/transaction.hpp>
+
+namespace bitcoin::serdes {
+
+inline constexpr std::size_t MAX_SIZE = 4'000'000;
+inline constexpr std::size_t MAX_VECTOR_ALLOCATE = 1'000'000;
+
+template <std::integral T>
+constexpr T from_le(T v) noexcept
+{
+  if constexpr (std::endian::native == std::endian::little) {
+    return v;
+  }
+  else {
+    return std::byteswap(v);
+  }
+}
+
+template <class Source>
+concept byte_source = requires(Source& source, std::span<std::byte> bytes) {
+  { source.read_some(bytes) } -> std::same_as<std::size_t>;
+};
+
+class span_source
+{
+public:
+  constexpr explicit span_source(std::span<std::byte const> data)
+    : data_{data}
+  {
+  }
+
+  constexpr std::size_t read_some(std::span<std::byte> out)
+  {
+    auto n = std::min(out.size(), data_.size());
+    std::memcpy(out.data(), data_.data(), n);
+    data_ = data_.subspan(n);
+    return n;
+  }
+
+  [[nodiscard]] constexpr bool empty() const { return data_.empty(); }
+
+private:
+  std::span<std::byte const> data_;
+};
+
+template <byte_source Source>
+class decoder
+{
+public:
+  constexpr explicit decoder(Source source)
+    : _source{std::move(source)}
+  {
+  }
+
+  [[nodiscard]] constexpr bool good() const { return !_failed; }
+
+  constexpr void fail() { _failed = true; }
+
+  constexpr void read(std::span<std::byte> out)
+  {
+    while (!out.empty() && good()) {
+      auto n = _source.read_some(out);
+      if (n == 0) {
+        fail();
+        return;
+      }
+
+      out = out.subspan(n);
+    }
+  }
+
+  constexpr auto source() -> Source& { return _source; }
+
+private:
+  Source _source;
+  bool _failed = false;
+};
+
+inline constexpr auto decode_u8 = [](auto& r) -> std::uint8_t {
+  auto v = std::uint8_t{};
+  r.read(as_writable_bytes(std::span{&v, 1}));
+  return v;
+};
+
+inline constexpr auto decode_u16 = [](auto& r) -> std::uint16_t {
+  auto v = std::uint16_t{};
+  r.read(as_writable_bytes(std::span{&v, 1}));
+  return from_le(v);
+};
+
+inline constexpr auto decode_u32 = [](auto& r) -> std::uint32_t {
+  auto v = std::uint32_t{};
+  r.read(as_writable_bytes(std::span{&v, 1}));
+  return from_le(v);
+};
+
+inline constexpr auto decode_u64 = [](auto& r) -> std::uint64_t {
+  auto v = std::uint64_t{};
+  r.read(as_writable_bytes(std::span{&v, 1}));
+  return from_le(v);
+};
+
+inline constexpr auto decode_uint256 = [](auto& r) {
+  auto h = std::array<std::byte, 32>{};
+  r.read(as_writable_bytes(std::span{h}));
+  return h;
+};
+
+inline constexpr auto decode_size = [](auto& r) -> std::size_t {
+  auto tag = decode_u8(r);
+  if (!r.good()) {
+    return 0;
+  }
+
+  if (tag < 253) {
+    return tag;
+  }
+
+  if (tag == 253) {
+    auto x = decode_u16(r);
+    if (!r.good() || x < 253) {
+      r.fail();
+      return 0;
+    }
+    return x;
+  }
+
+  if (tag == 254) {
+    auto x = decode_u32(r);
+    if (!r.good() || x < 0x1'0000u) {
+      r.fail();
+      return 0;
+    }
+    return x;
+  }
+
+  // tag == 255
+  auto x = decode_u64(r);
+  if (!r.good() || x < 0x1'0000'0000ull || x > MAX_SIZE) {
+    r.fail();
+    return 0;
+  }
+  return x;
+};
+
+inline constexpr auto decode_bytes = [](auto& r) -> std::vector<std::byte> {
+  auto size = decode_size(r);
+  auto buf = std::vector<std::byte>(size);
+  r.read(buf);
+  return buf;
+};
+
+inline constexpr auto decode_range = [](auto& r, auto decode_elem) {
+  using value_type = std::decay_t<decltype(decode_elem(r))>;
+  constexpr auto batch_size = MAX_VECTOR_ALLOCATE / sizeof(value_type);
+
+  auto const size = decode_size(r);
+  auto out = std::vector<value_type>{};
+  out.reserve(std::min(size, batch_size));
+
+  while (out.size() < size && r.good()) {
+    if (out.size() == out.capacity()) {
+      out.reserve(std::min(size, out.size() + batch_size));
+    }
+    out.push_back(decode_elem(r));
+  }
+
+  return out;
+};
+
+inline constexpr auto decode_outpoint = [](auto& r) {
+  auto hash = decode_uint256(r);
+  auto index = decode_u32(r);
+  return outpoint{txid{hash}, index};
+};
+
+inline constexpr auto decode_txin = [](auto& r) {
+  auto prevout = decode_outpoint(r);
+  auto script = decode_bytes(r);
+  auto sequence = decode_u32(r);
+  return tx_input{prevout, std::move(script), sequence};
+};
+
+inline constexpr auto decode_txout = [](auto& r) {
+  auto amount = decode_i64(r);
+  auto script = decode_bytes(r);
+  return tx_output{amount, std::move(script)};
+};
+
+inline constexpr auto decode_witness = [](auto& r, std::vector<tx_input> in) {
+  for (auto& elem : in) {
+    auto witness = decode_range(r, decode_bytes);
+    elem = tx_input{std::move(elem), std::move(witness)};
+  }
+  return in;
+};
+
+inline constexpr auto decode_tx = [](auto& r) -> transaction {
+  auto const version = decode_u32(r);
+  auto inputs = decode_range(r, decode_txin);
+  auto outputs = std::vector<tx_output>{};
+
+  if (!inputs.empty()) {
+    outputs = decode_range(r, decode_txout);
+  }
+  else {
+    auto const flags = decode_u8(r);
+    if (flags == 1) {
+      inputs = decode_range(r, decode_txin);
+      outputs = decode_range(r, decode_txout);
+    }
+    else if (flags != 0) {
+      r.fail();
+      return {};
+    }
+    inputs = decode_witness(r, std::move(inputs));
+    auto const has_witness = std::ranges::any_of(
+      inputs, [](auto const& elem) { return !elem.witness.empty(); });
+    if (!has_witness) {
+      r.fail();
+      return {};
+    }
+  }
+
+  auto const locktime = decode_u32(r);
+  return transaction{version, std::move(inputs), std::move(outputs), locktime};
+};
+
+inline constexpr auto decode_block_header = [](auto& r) {
+  auto version = decode_u32(r);
+  auto prev_block = decode_uint256(r);
+  auto merkle_root = decode_uint256(r);
+  auto time = decode_u32(r);
+  auto bits = decode_u32(r);
+  auto nonce = decode_u32(r);
+  return block_header{
+    .version = version,
+    .prev_block_hash = block_hash{prev_block},
+    .merkle_root = hash256{merkle_root},
+    .time = std::chrono::sys_seconds{std::chrono::seconds{time}},
+    .bits = bits,
+    .nonce = nonce,
+  };
+};
+
+inline constexpr auto decode_block = [](auto& r) {
+  auto header = decode_block_header(r);
+  auto transactions = decode_range(r, decode_tx);
+  return block{std::move(header), std::move(transactions)};
+};
+
+} // namespace bitcoin::serdes

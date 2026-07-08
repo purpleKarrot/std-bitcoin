@@ -15,7 +15,7 @@ namespace bitcoin {
 
 struct block_header
 {
-  std::int32_t version;
+  std::uint32_t version;
   bitcoin::block_hash prev_block_hash;
   bitcoin::hash256 merkle_root;
   std::chrono::sys_seconds time;

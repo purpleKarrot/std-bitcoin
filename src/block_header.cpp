@@ -7,6 +7,7 @@
 
 #include "hash.h"
 #include "primitives/block.h"
+#include "serdes_decode.hpp"
 #include "serdes_encode.hpp"
 #include "streams.h"
 
@@ -15,23 +16,11 @@ namespace bitcoin {
 auto parse_block_header(std::span<std::byte const> raw)
   -> std::optional<block_header>
 {
-  auto stream = DataStream{raw};
-  auto core_header = CBlockHeader{};
-  stream >> core_header;
-  if (!stream.empty()) {
+  auto decoder = serdes::decoder{serdes::span_source{raw}};
+  auto header = serdes::decode_block_header(decoder);
+  if (!decoder.good() || !decoder.source().empty()) {
     return std::nullopt;
   }
-
-  auto header = block_header{};
-  header.version = core_header.nVersion;
-  header.prev_block_hash = bitcoin::block_hash{std::span<std::byte const, 32>{
-    reinterpret_cast<std::byte const*>(core_header.hashPrevBlock.data()), 32}};
-  header.merkle_root = bitcoin::hash256{std::span<std::byte const, 32>{
-    reinterpret_cast<std::byte const*>(core_header.hashMerkleRoot.data()), 32}};
-  header.time =
-    std::chrono::sys_seconds{std::chrono::seconds{core_header.nTime}};
-  header.bits = core_header.nBits;
-  header.nonce = core_header.nNonce;
   return header;
 }
 
