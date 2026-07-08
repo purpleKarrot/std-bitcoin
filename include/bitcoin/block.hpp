@@ -8,8 +8,6 @@
 #include <span>
 #include <vector>
 
-#include <beman/any_view/any_view.hpp>
-
 #include <bitcoin/block_header.hpp>
 #include <bitcoin/transaction.hpp>
 
@@ -19,23 +17,17 @@ class block;
 
 namespace detail {
 
-struct block_data;
 void serialize(block const& b, byte_sink_ref sink);
 
 } // namespace detail
 
 class block
 {
-  static constexpr auto sized_random_access =
-    beman::any_view::any_view_options::random_access
-    | beman::any_view::any_view_options::sized;
-
 public:
-  using transaction_view =
-    beman::any_view::any_view<transaction, sized_random_access, transaction>;
+  using transaction_view = std::span<transaction const>;
 
   block();
-  explicit block(detail::block_data data);
+  explicit block(block_header header, std::vector<transaction> transactions);
 
   [[nodiscard]] auto header() const noexcept -> block_header const&;
   [[nodiscard]] auto transactions() const -> transaction_view;
@@ -46,7 +38,7 @@ public:
 
 private:
   block_header _header;
-  std::shared_ptr<detail::block_data const> _data;
+  std::vector<transaction> _transactions;
   friend struct _impl_access;
 };
 

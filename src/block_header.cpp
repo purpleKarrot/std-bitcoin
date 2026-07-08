@@ -6,10 +6,8 @@
 #include <span>
 
 #include "hash.h"
-#include "primitives/block.h"
 #include "serdes_decode.hpp"
 #include "serdes_encode.hpp"
-#include "streams.h"
 
 namespace bitcoin {
 

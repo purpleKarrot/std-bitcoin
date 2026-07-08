@@ -398,7 +398,7 @@ TEST_CASE("p2tr scriptpath verification")
   auto const outputs = std::array{
     bitcoin::tx_output{
       1757828 * bitcoin::units::satoshi,
-      bitcoin::script_ref{
+      bitcoin::script{
         "51207ee3c4ab9c8144be0e39fc849fab95e70da97fb0d70754b34553c25f9d325fa0"_hex},
     },
     bitcoin::tx_output{amount, spk},

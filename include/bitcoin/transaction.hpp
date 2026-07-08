@@ -25,7 +25,6 @@ class transaction;
 
 namespace detail {
 
-struct transaction_data;
 void serialize(transaction const& tx, byte_sink_ref sink);
 
 } // namespace detail
@@ -69,6 +68,14 @@ public:
                                 | beman::any_view::any_view_options::sized,
                               std::span<std::byte const>>;
 
+  constexpr tx_input() = default;
+  explicit tx_input(bitcoin::outpoint prevout, bitcoin::script script,
+                    std::uint32_t sequence,
+                    std::vector<std::vector<std::byte>> witness = {});
+
+  explicit tx_input(tx_input&& other,
+                    std::vector<std::vector<std::byte>> witness);
+
   [[nodiscard]] auto prevout() const noexcept -> outpoint;
   [[nodiscard]] auto script() const noexcept -> script_ref;
   [[nodiscard]] auto sequence() const noexcept -> std::uint32_t;
@@ -76,47 +83,38 @@ public:
 
   friend bool operator==(tx_input const& lhs, tx_input const& rhs) noexcept;
 
-  tx_input(std::shared_ptr<detail::transaction_data const> data,
-           std::size_t index) noexcept;
-
 private:
-  std::shared_ptr<detail::transaction_data const> _data;
-  std::size_t _index{};
+  bitcoin::outpoint _prevout;
+  bitcoin::script _script;
+  std::uint32_t _sequence{};
+  std::vector<std::vector<std::byte>> _witness;
 };
 
 class tx_output
 {
 public:
-  tx_output(amount value, script_ref script);
+  constexpr tx_output() = default;
+  tx_output(bitcoin::amount value, bitcoin::script script);
 
   [[nodiscard]] auto value() const noexcept -> amount;
   [[nodiscard]] auto script() const noexcept -> script_ref;
 
   friend bool operator==(tx_output const& lhs, tx_output const& rhs) noexcept;
 
-  tx_output(std::shared_ptr<detail::transaction_data const> data,
-            std::size_t index) noexcept;
-
 private:
-  std::shared_ptr<detail::transaction_data const> _data;
-  std::size_t _index{};
-  friend struct _impl_access;
+  bitcoin::amount _value;
+  bitcoin::script _script;
 };
 
 class transaction
 {
-  static constexpr auto sized_random_access =
-    beman::any_view::any_view_options::random_access
-    | beman::any_view::any_view_options::sized;
-
 public:
-  using input_view =
-    beman::any_view::any_view<tx_input, sized_random_access, tx_input>;
-  using output_view =
-    beman::any_view::any_view<tx_output, sized_random_access, tx_output>;
+  using input_view = std::span<tx_input const>;
+  using output_view = std::span<tx_output const>;
 
   transaction();
-  explicit transaction(std::shared_ptr<detail::transaction_data const> data);
+  explicit transaction(std::uint32_t version, std::vector<tx_input> inputs,
+                       std::vector<tx_output> outputs, std::uint32_t locktime);
 
   [[nodiscard]] auto version() const noexcept -> std::uint32_t;
   [[nodiscard]] auto locktime() const noexcept -> std::uint32_t;
@@ -130,8 +128,15 @@ public:
   friend auto serialized_size(transaction const& tx) -> std::size_t;
 
 private:
-  std::shared_ptr<detail::transaction_data const> _data;
-  friend struct _impl_access;
+  std::uint32_t _version{};
+  std::vector<tx_input> _inputs;
+  std::vector<tx_output> _outputs;
+  std::uint32_t _locktime{};
+
+  bool _has_witness;
+  std::array<std::byte, 32> _hash;
+  std::array<std::byte, 32> _witness_hash;
+
   friend struct detail::txid_policy;
   friend struct detail::wtxid_policy;
 };

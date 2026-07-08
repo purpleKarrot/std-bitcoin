@@ -6,218 +6,163 @@
 #include <ranges>
 #include <utility>
 
-#include "detail.hpp"
-#include "primitives/transaction.h"
-#include "streams.h"
+#include "hash.h"
+#include "serdes_decode.hpp"
+#include "serdes_encode.hpp"
 
 namespace bitcoin {
 namespace {
 
-auto as_CScript(bitcoin::script_ref script) -> CScript
+inline bool has_witness(std::vector<tx_input> const& inputs)
 {
-  auto const bytes = as_bytes(script);
-  auto const* data = reinterpret_cast<uint8_t const*>(bytes.data());
-  return {data, data + bytes.size()};
+  return std::ranges::any_of(
+    inputs, [](tx_input const& input) { return !input.witness().empty(); });
 }
 
 } // namespace
 
-tx_input::tx_input(std::shared_ptr<detail::transaction_data const> data,
-                   std::size_t index) noexcept
-  : _data{std::move(data)}
-  , _index{index}
+tx_input::tx_input(bitcoin::outpoint prevout, bitcoin::script script,
+                   std::uint32_t sequence,
+                   std::vector<std::vector<std::byte>> witness)
+  : _prevout{std::move(prevout)}
+  , _script{std::move(script)}
+  , _sequence{sequence}
+  , _witness{std::move(witness)}
 {
 }
 
-tx_output::tx_output(std::shared_ptr<detail::transaction_data const> data,
-                     std::size_t index) noexcept
-  : _data{std::move(data)}
-  , _index{index}
+tx_input::tx_input(tx_input&& other,
+                   std::vector<std::vector<std::byte>> witness)
+  : _prevout{std::move(other._prevout)}
+  , _script{std::move(other._script)}
+  , _sequence{other._sequence}
+  , _witness{std::move(witness)}
 {
 }
 
-transaction::transaction(std::shared_ptr<detail::transaction_data const> data)
-  : _data(std::move(data))
+tx_output::tx_output(bitcoin::amount value, bitcoin::script script)
+  : _value{value}
+  , _script{std::move(script)}
 {
+}
+
+transaction::transaction(std::uint32_t version, std::vector<tx_input> inputs,
+                         std::vector<tx_output> outputs, std::uint32_t locktime)
+  : _version{version}
+  , _inputs{std::move(inputs)}
+  , _outputs{std::move(outputs)}
+  , _locktime{locktime}
+  , _has_witness{has_witness(_inputs)}
+{
+  {
+    auto hasher = HashWriter{};
+    serdes::encode_tx(serdes::witness::disallow)(hasher, *this);
+    auto const hash = hasher.GetHash();
+    std::ranges::transform(hash, _hash.begin(),
+                           [](auto byte) { return std::byte{byte}; });
+  }
+  {
+    auto hasher = HashWriter{};
+    serdes::encode_tx(serdes::witness::allow)(hasher, *this);
+    auto const hash = hasher.GetHash();
+    std::ranges::transform(hash, _witness_hash.begin(),
+                           [](auto byte) { return std::byte{byte}; });
+  }
 }
 
 auto tx_input::prevout() const noexcept -> outpoint
 {
-  assert(_data != nullptr);
-  assert(_index < _data->vin.size());
-  auto const& prevout = _data->vin[_index].prevout;
-  auto const data = std::span<std::byte const, 32>{prevout.hash.data(), 32};
-  return {bitcoin::txid{data}, prevout.n};
+  return _prevout;
 }
 
 auto tx_input::script() const noexcept -> script_ref
 {
-  assert(_data != nullptr);
-  assert(_index < _data->vin.size());
-  return script_ref{as_bytes(std::span{_data->vin[_index].scriptSig})};
+  return _script;
 }
 
 auto tx_input::sequence() const noexcept -> std::uint32_t
 {
-  assert(_data != nullptr);
-  assert(_index < _data->vin.size());
-  return _data->vin[_index].nSequence;
+  return _sequence;
 }
 
 auto tx_input::witness() const -> witness_view
 {
-  assert(_data != nullptr);
-  assert(_index < _data->vin.size());
-  constexpr auto conv = [](auto const& v) { return as_bytes(std::span{v}); };
-  return _data->vin[_index].scriptWitness.stack | std::views::transform(conv);
+  return _witness;
 }
 
-bool operator==(tx_input const& lhs, tx_input const& rhs) noexcept
-{
-  if (lhs._data == rhs._data && lhs._index == rhs._index) {
-    return true;
-  }
-
-  if (lhs._data == nullptr || rhs._data == nullptr) {
-    return lhs._data == rhs._data;
-  }
-
-  assert(lhs._index < lhs._data->vin.size());
-  assert(rhs._index < rhs._data->vin.size());
-  return (lhs._data->vin[lhs._index] == rhs._data->vin[rhs._index])
-    && (lhs._data->vin[lhs._index].scriptWitness.stack
-        == rhs._data->vin[rhs._index].scriptWitness.stack);
-}
-
-tx_output::tx_output(amount value, script_ref script)
-  : _index{0}
-{
-  auto mut = CMutableTransaction{};
-  mut.vout.emplace_back(value.numerical_value_in(units::satoshi),
-                        as_CScript(script));
-  _data = std::make_shared<detail::transaction_data>(std::move(mut));
-}
+bool operator==(tx_input const& lhs, tx_input const& rhs) noexcept = default;
 
 auto tx_output::value() const noexcept -> amount
 {
-  assert(_data != nullptr);
-  assert(_index < _data->vout.size());
-  return _data->vout[_index].nValue * units::satoshi;
+  return _value;
 }
 
 auto tx_output::script() const noexcept -> script_ref
 {
-  assert(_data != nullptr);
-  assert(_index < _data->vout.size());
-  return script_ref{as_bytes(std::span{_data->vout[_index].scriptPubKey})};
+  return _script;
 }
 
-bool operator==(tx_output const& lhs, tx_output const& rhs) noexcept
-{
-  if (lhs._data == rhs._data && lhs._index == rhs._index) {
-    return true;
-  }
+bool operator==(tx_output const& lhs, tx_output const& rhs) noexcept = default;
 
-  if (lhs._data == nullptr || rhs._data == nullptr) {
-    return lhs._data == rhs._data;
-  }
-
-  assert(lhs._index < lhs._data->vout.size());
-  assert(rhs._index < rhs._data->vout.size());
-  return lhs._data->vout[lhs._index] == rhs._data->vout[rhs._index];
-}
-
-transaction::transaction()
-  : _data(std::make_shared<detail::transaction_data>(CMutableTransaction{}))
-{
-}
+transaction::transaction() = default;
 
 void detail::txid_policy::operator()(bitcoin::transaction const& tx,
                                      std::span<std::byte, 32ul> dst) const
 {
-  assert(tx._data != nullptr);
-  auto const& hash = tx._data->GetHash();
-  std::ranges::copy(hash, dst.begin());
+  std::ranges::copy(tx._hash, dst.begin());
 }
 
 void detail::wtxid_policy::operator()(bitcoin::transaction const& tx,
                                       std::span<std::byte, 32ul> dst) const
 {
-  assert(tx._data != nullptr);
-  auto const& hash = tx._data->GetWitnessHash();
-  std::ranges::copy(hash, dst.begin());
+  std::ranges::copy(tx._witness_hash, dst.begin());
 }
 
 auto transaction::version() const noexcept -> std::uint32_t
 {
-  assert(_data != nullptr);
-  return _data->version;
+  return _version;
 }
 
 auto transaction::locktime() const noexcept -> std::uint32_t
 {
-  assert(_data != nullptr);
-  return _data->nLockTime;
+  return _locktime;
 }
 
 auto transaction::inputs() const -> input_view
 {
-  assert(_data != nullptr);
-  auto indices = std::views::iota(std::size_t{0}, _data->vin.size());
-  return std::views::transform(indices, [data = _data](std::size_t index) {
-    return tx_input{data, index};
-  });
+  return _inputs;
 }
 
 auto transaction::outputs() const -> output_view
 {
-  assert(_data != nullptr);
-  auto indices = std::views::iota(std::size_t{0}, _data->vout.size());
-  return std::views::transform(indices, [data = _data](std::size_t index) {
-    return tx_output{data, index};
-  });
+  return _outputs;
 }
 
-bool operator==(transaction const& lhs, transaction const& rhs) noexcept
-{
-  if (lhs._data == rhs._data) {
-    return true;
-  }
-
-  if (lhs._data == nullptr || rhs._data == nullptr) {
-    return lhs._data == rhs._data;
-  }
-
-  return *lhs._data == *rhs._data;
-}
+bool operator==(transaction const& lhs,
+                transaction const& rhs) noexcept = default;
 
 auto parse_transaction(std::span<std::byte const> raw)
   -> std::optional<transaction>
 {
-  try {
-    auto stream = DataStream{raw};
-    auto txdata = std::make_shared<detail::transaction_data>(
-      deserialize, TX_WITH_WITNESS, stream);
-    if (!stream.empty()) {
-      return std::nullopt;
-    }
-    return transaction{std::move(txdata)};
-  }
-  catch (std::ios_base::failure const&) {
+  auto decoder = serdes::decoder{serdes::span_source{raw}};
+  auto tx = serdes::decode_tx(decoder);
+  if (!decoder.good() || !decoder.source().empty()) {
     return std::nullopt;
   }
+  return tx;
 }
 
 void detail::serialize(transaction const& tx, byte_sink_ref sink)
 {
-  assert(tx._data != nullptr);
-  ::Serialize(sink, TX_WITH_WITNESS(*tx._data));
+  auto buf = serdes::buffered_sink<byte_sink_ref>{std::move(sink)};
+  serdes::encode_tx(serdes::witness::allow)(buf, tx);
 }
 
 auto serialized_size(transaction const& tx) -> std::size_t
 {
-  assert(tx._data != nullptr);
-  return ::GetSerializeSize(TX_WITH_WITNESS(*tx._data));
+  auto sink = serdes::counting_sink{};
+  serdes::encode_tx(serdes::witness::allow)(sink, tx);
+  return sink.size();
 }
 
 } // namespace bitcoin

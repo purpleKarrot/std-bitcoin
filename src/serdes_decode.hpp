@@ -190,14 +190,14 @@ inline constexpr auto decode_outpoint = [](auto& r) {
 
 inline constexpr auto decode_txin = [](auto& r) {
   auto prevout = decode_outpoint(r);
-  auto script = decode_bytes(r);
+  auto script = bitcoin::script{decode_bytes(r)};
   auto sequence = decode_u32(r);
   return tx_input{prevout, std::move(script), sequence};
 };
 
 inline constexpr auto decode_txout = [](auto& r) {
-  auto amount = decode_i64(r);
-  auto script = decode_bytes(r);
+  auto amount = decode_u64(r) * bitcoin::units::satoshi;
+  auto script = bitcoin::script{decode_bytes(r)};
   return tx_output{amount, std::move(script)};
 };
 
@@ -229,7 +229,7 @@ inline constexpr auto decode_tx = [](auto& r) -> transaction {
     }
     inputs = decode_witness(r, std::move(inputs));
     auto const has_witness = std::ranges::any_of(
-      inputs, [](auto const& elem) { return !elem.witness.empty(); });
+      inputs, [](tx_input const& elem) { return !elem.witness().empty(); });
     if (!has_witness) {
       r.fail();
       return {};

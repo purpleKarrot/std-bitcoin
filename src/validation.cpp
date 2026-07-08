@@ -6,8 +6,10 @@
 
 #include "consensus/tx_check.h"
 #include "consensus/validation.h"
-#include "detail.hpp"
+#include "legacy.hpp"
 #include "pow.h"
+#include "primitives/block.h"
+#include "primitives/transaction.h"
 #include "script/interpreter.h"
 #include "script/verify_flags.h"
 #include "validation.h"
@@ -64,11 +66,12 @@ validation_status verifier::verify(block_header const& header) const
 // {
 // }
 
-validation_status verifier::verify(bitcoin::block const& block) const
+validation_status verifier::verify(bitcoin::block const& b) const
 {
+  auto const block = legacy::convert_block(b);
   auto state = BlockValidationState{};
   auto params = CChainParams::Main()->GetConsensus();
-  bool const result = CheckBlock(_impl_access::get(block), state, params);
+  bool const result = CheckBlock(block, state, params);
   return result ? 0 : -1; // state.GetResult();
 }
 
@@ -79,8 +82,9 @@ validation_status verifier::verify(bitcoin::block const& block) const
 
 validation_status verifier::verify(bitcoin::transaction const& tx) const
 {
+  auto const txn = legacy::convert_tx(tx);
   auto state = TxValidationState{};
-  bool const ok = CheckTransaction(_impl_access::get(tx), state);
+  bool const ok = CheckTransaction(txn, state);
   return ok ? 0 : -1; // state.GetResult();
 }
 
@@ -107,13 +111,13 @@ validation_status verifier::verify(script_ref script, amount value,
     throw std::invalid_argument("Spent outputs required for taproot");
   }
 
-  CTransaction const& tx = _impl_access::get(tx_to);
+  CTransaction const& tx = legacy::convert_tx(tx_to);
   std::vector<CTxOut> spent_outputs;
   if (!prevouts.empty()) {
     assert(prevouts.size() == tx.vin.size());
     spent_outputs.reserve(prevouts.size());
     for (auto const& elem : prevouts) {
-      spent_outputs.push_back(_impl_access::get(elem));
+      spent_outputs.push_back(legacy::convert_txout(elem));
     }
   }
 

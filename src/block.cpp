@@ -6,35 +6,16 @@
 #include <ranges>
 #include <vector>
 
-#include "detail.hpp"
-#include "primitives/block.h"
-#include "serialize.h"
-#include "streams.h"
+#include "serdes_decode.hpp"
+#include "serdes_encode.hpp"
 
 namespace bitcoin {
 
-namespace {
+block::block() = default;
 
-auto make_block_header(CBlockHeader const& header) -> bitcoin::block_header
-{
-  auto stream = DataStream{};
-  stream << header;
-  auto const parsed = parse_block_header(
-    std::span<std::byte const>{stream.data(), stream.size()});
-  assert(parsed.has_value());
-  return *parsed;
-}
-
-} // namespace
-
-block::block()
-  : block(detail::block_data{})
-{
-}
-
-block::block(detail::block_data data)
-  : _header{make_block_header(data)}
-  , _data{std::make_shared<detail::block_data>(std::move(data))}
+block::block(block_header header, std::vector<transaction> transactions)
+  : _header{header}
+  , _transactions{std::move(transactions)}
 {
 }
 
@@ -45,58 +26,32 @@ auto block::header() const noexcept -> block_header const&
 
 auto block::transactions() const -> transaction_view
 {
-  constexpr auto convert = [](CTransactionRef const& in) {
-    auto mut = CMutableTransaction{*in};
-    auto ptr = std::make_shared<detail::transaction_data>(std::move(mut));
-    return bitcoin::transaction{std::move(ptr)};
-  };
-
-  assert(_data != nullptr);
-  return _data->vtx | std::views::transform(convert);
+  return _transactions;
 }
 
-bool operator==(block const& lhs, block const& rhs) noexcept
-{
-  if (lhs._data == rhs._data) {
-    return true;
-  }
-
-  if (lhs._data == nullptr || rhs._data == nullptr) {
-    return lhs._data == rhs._data;
-  }
-
-  return (lhs._header == rhs._header)
-    && std::ranges::equal(
-           lhs._data->vtx, rhs._data->vtx,
-           [](auto const& l, auto const& r) { return *l == *r; });
-}
+bool operator==(block const& lhs, block const& rhs) noexcept = default;
 
 auto parse_block(std::span<std::byte const> raw) -> std::optional<block>
 {
-  try {
-    auto stream = DataStream{raw};
-    auto data = detail::block_data{};
-    stream >> TX_WITH_WITNESS(data);
-    if (!stream.empty()) {
-      return std::nullopt;
-    }
-    return block{std::move(data)};
-  }
-  catch (std::ios_base::failure const&) {
+  auto decoder = serdes::decoder{serdes::span_source{raw}};
+  auto b = serdes::decode_block(decoder);
+  if (!decoder.good() || !decoder.source().empty()) {
     return std::nullopt;
   }
+  return b;
 }
 
 void detail::serialize(block const& b, byte_sink_ref sink)
 {
-  assert(b._data != nullptr);
-  ::Serialize(sink, TX_WITH_WITNESS(*b._data));
+  auto buf = serdes::buffered_sink<byte_sink_ref>{std::move(sink)};
+  serdes::encode_block(buf, b);
 }
 
 auto serialized_size(block const& b) -> std::size_t
 {
-  assert(b._data != nullptr);
-  return ::GetSerializeSize(TX_WITH_WITNESS(*b._data));
+  auto sink = serdes::counting_sink{};
+  serdes::encode_block(sink, b);
+  return sink.size();
 }
 
 void detail::block_hash_policy::operator()(block const& b,

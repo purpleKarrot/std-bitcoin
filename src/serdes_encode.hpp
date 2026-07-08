@@ -111,7 +111,7 @@ inline constexpr auto encode_txout = [](auto& w, tx_output const& out) {
 
 inline constexpr auto encode_tx = [](witness wmode) {
   return [=](auto& w, transaction const& tx) {
-    bool const with_witness = (wmode == witness::allow); // && has_witness(tx));
+    bool const with_witness = (wmode == witness::allow) && is_segwit(tx);
 
     encode_u32(w, tx.version());
 
