@@ -66,9 +66,9 @@ projects including:
 - Bitcoin Script Extensions (
   [html](https://purplekarrot.github.io/std-bitcoin/SCRIPT.html),
   [pdf](https://purplekarrot.github.io/std-bitcoin/SCRIPT.pdf))
-- Bitcoin Chains: `chain_view` and `any_chain_view` (
-  [html](https://purplekarrot.github.io/std-bitcoin/CHAIN.html),
-  [pdf](https://purplekarrot.github.io/std-bitcoin/CHAIN.pdf))
+- Bitcoin Consensus Validation (
+  [html](https://purplekarrot.github.io/std-bitcoin/VALIDATION.html),
+  [pdf](https://purplekarrot.github.io/std-bitcoin/VALIDATION.pdf))
 
 ---
 

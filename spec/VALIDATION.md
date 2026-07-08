@@ -1,5 +1,5 @@
 ---
-title: "Bitcoin Validation: `coin`, `coin_index`, `verification_status`, and `verify`"
+title: "Bitcoin Consensus Validation"
 date: today
 document: VALIDATION
 audience:
@@ -14,22 +14,6 @@ references:
     citation-label: VOCABULARY
     title: "Adding Bitcoin Vocabulary Types to the C++ Standard Library"
     URL: https://purplekarrot.github.io/std-bitcoin/VOCABULARY.html
-  - id: PREDICATES
-    citation-label: PREDICATES
-    title: "Bitcoin Protocol Predicates"
-    URL: https://purplekarrot.github.io/std-bitcoin/PREDICATES.html
-  - id: SERDES
-    citation-label: SERDES
-    title: "Bitcoin Wire Formats: Parsing and Serialization"
-    URL: https://purplekarrot.github.io/std-bitcoin/SERDES.html
-  - id: SCRIPT
-    citation-label: SCRIPT
-    title: "Bitcoin Script Extensions"
-    URL: https://purplekarrot.github.io/std-bitcoin/SCRIPT.html
-  - id: CHAIN
-    citation-label: CHAIN
-    title: "Bitcoin Chains: `chain_view` and `any_chain_view`"
-    URL: https://purplekarrot.github.io/std-bitcoin/CHAIN.html
   - id: BIP34
     citation-label: BIP-34
     title: "BIP-34: Block v2, Height in Coinbase"
@@ -64,64 +48,45 @@ not under active consideration for standardization.]{.draftnote}
 
 # Abstract
 
-This paper adds the vocabulary type `bitcoin::coin`, the concept
-`bitcoin::coin_index`, the class `bitcoin::verification_status`, the class
-template `bitcoin::verify_result<Fact>`, the aggregate
-`bitcoin::consensus_parameters`, the class `bitcoin::verifier`, and predefined
-`inline constexpr` `verify` objects for Bitcoin networks to the `<bitcoin>`
-header.
+This paper proposes a standard C++ interface for Bitcoin consensus validation.
 
-`coin` represents an unspent transaction output — a `tx_output` together with
-the height at which its containing transaction was confirmed. `coin_index`
-provides a lookup interface from `outpoint` to `std::optional<coin>`.
+It defines a `verifier` function object that checks `block_header`,
+`transaction`, and `block` objects and returns ordinary values for both
+successful and unsuccessful validation. The overload set makes required
+validation evidence explicit: some overloads need only the candidate object,
+while others additionally accept a `chain_view`, the current time, or a
+`coin_index`.
 
-`verification_status` represents the outcome of a consensus-rule evaluation. Its
-constructors are unspecified; the set of failure values is
-implementation-defined.
+To support this interface, the paper specifies the `chain_view` and `coin_index`
+abstractions, the vocabulary type `coin`, the result types `verification_status`
+and `verify_result<Fact>`, the network-parameter aggregate
+`consensus_parameters`, and predefined `verify` objects for the standard Bitcoin
+networks.
 
-`verify_result<Fact>` carries either a successful verification's by-product (a
-*fact*) or a failure status.
+The design keeps storage strategy, caching, and any type-erasure out of the
+public API. A failed verification is reported as a normal return value; true
+execution failures remain exceptional and propagate via exceptions.
 
-`consensus_parameters` is an aggregate bundling the network-specific constants
-that govern Bitcoin consensus rules.
-
-`verifier` is a lightweight function object holding a non-owning pointer to a
-`consensus_parameters` instance. It exposes an overload set of `operator()` for
-`block_header`, `transaction`, and `block`; the contextual overloads are
-constrained member function templates over `chain_view` and `coin_index`. The
-progression from intrinsic to contextual verification is expressed through
-overloading: additional parameters represent additional consensus evidence.
-
-Predefined `inline constexpr` `verify` objects are provided in network-specific
-namespaces. Each object references a `consensus_parameters` instance with static
-storage duration configured for its respective network. The object
-`bitcoin::verify` is configured for the Bitcoin mainnet.
-
-A negative verification result is one of two normal outcomes of consensus
-evaluation and is reported by the return value. True failures — allocation
-errors, I/O failures, and the like — remain exceptional and propagate via
-exceptions.
-
-This paper depends on the companion papers \[@VOCABULARY; @PREDICATES; @SERDES;
-@SCRIPT; @CHAIN\].
+This paper depends on the companion paper [@VOCABULARY].
 
 # Motivation and Scope
 
 Bitcoin software needs a common interface for consensus validation that is
-independent of any particular node, chainstate, or UTXO-set implementation. The
-companion papers standardize vocabulary types, predicates, serialization, script
-utilities, and chain views; this paper layers on top of those facilities to
-standardize how programs supply contextual evidence and receive validation
-results.
+independent of any particular node, chainstate, or UTXO-set implementation. This
+paper standardizes how programs supply validation evidence and receive
+validation results, while leaving node architecture and storage choices outside
+the specification.
 
 The proposal separates the *interface* of validation from the complete
-definition of Bitcoin consensus. It standardizes the `coin` vocabulary type,
-the `coin_index` concept, validation outcomes, and validation by-products,
-together with overloads that make progressively richer evidence explicit in the
-function signature.
+definition of Bitcoin consensus. It standardizes the `chain_view` and
+`coin_index` abstractions, the `coin` vocabulary type, validation outcomes, and
+validation by-products, together with overloads that make progressively richer
+evidence explicit in the function signature. The public interface is expressed
+entirely in terms of vocabulary types from [@VOCABULARY].
 
 ## In scope
 
+- The concept `bitcoin::chain_view`.
 - The vocabulary type `bitcoin::coin`.
 - The concept `bitcoin::coin_index`.
 - The class `bitcoin::verification_status`.
@@ -156,9 +121,9 @@ function signature.
 This is a pure library addition. It adds declarations to `namespace bitcoin` and
 nested namespaces inside the `<bitcoin>` header. It requires no core language
 changes and introduces no new standard library dependencies beyond `<chrono>`,
-`<concepts>`, `<cstdint>`, `<format>`, `<optional>`, and `<vector>`, which are
-already required by the papers on which this paper depends or by the C++
-standard library.
+`<concepts>`, `<cstdint>`, `<format>`, `<optional>`, `<ranges>`, and `<vector>`,
+which are already required by the papers on which this paper depends or by the
+C++ standard library.
 
 No existing names are modified or deprecated.
 
@@ -167,34 +132,54 @@ No existing names are modified or deprecated.
 ## Negative verification is an ordinary result
 
 A negative verification result is not an exceptional condition: consensus
-validation is a query whose answer may legitimately be "no". The proposed API
-therefore represents rule violations in `verification_status` and
-`verify_result<Fact>` rather than by throwing dedicated validation exceptions.
-Exceptions remain available for true failures such as allocation or I/O errors.
+validation is a query whose answer may legitimately be "no". This follows the
+error model articulated in [@P0709R4]: a function reports an error when it
+cannot do what it advertised despite its preconditions having been met. An
+invalid block, transaction, or header is instead an ordinary outcome of the
+validation query. The proposed API therefore represents rule violations in
+`verification_status` and `verify_result<Fact>` rather than by throwing
+dedicated validation exceptions. Exceptions remain available for true failures
+such as allocation or I/O errors.
 
-## Progressive contextual verification
+## Progressive verification
 
 Some consensus rules can be checked from the candidate object alone, while
-others require external evidence such as the ancestor chain, the current time,
+others require additional evidence such as the ancestor chain, the current time,
 or the UTXO set. The overload set of `verifier::operator()` reflects this
 progression directly: overloads with more parameters evaluate a superset of the
 rules evaluated by overloads with fewer parameters.
 
 ## Constrained evidence parameters
 
-Validation code often needs access to chain and UTXO evidence supplied by
+Validation code needs access to chain and UTXO evidence supplied by
 implementation-specific storage layers. The standardized interface therefore
-expresses those dependencies as the concepts `chain_view` [@CHAIN] and
-`coin_index`, and the contextual `verifier::operator()` overloads are
-constrained member function templates. Implementations may still adapt those
-arguments to private non-owning, type-erased representations internally, but
-that mechanism is not specified and is not part of the public API.
+expresses those dependencies as the concepts `chain_view` and `coin_index`, and
+the overloads of `verifier::operator()` that take evidence parameters are
+constrained member function templates. This keeps the public API concept-based
+while still allowing implementations to adapt those arguments to private
+non-owning, type-erased representations internally. Any such type erasure is an
+implementation detail and is not part of the public API.
+
+## Alignment with standard lookup interfaces
+
+The `coin_index` concept requires `lookup` to return
+`std::optional<const coin&>`. This follows the direction of the standard lookup
+proposals for C++29. [@P3091R5] provides the optional-reference lookup model,
+while [@P4139R2] argues for naming that operation `lookup` rather than `get`.
+This paper adopts the same name and can follow further standard library
+evolution if that naming direction changes. Under that design,
+`std::map<outpoint, coin>`, `std::unordered_map<outpoint, coin>`, and
+`std::flat_map<outpoint, coin>` become natural models of `coin_index`.
+
+That is valuable even if production nodes use custom UTXO data structures.
+Tests, examples, and small implementations can use standard containers directly,
+while full nodes remain free to provide more specialized storage and caching
+architectures behind the same abstraction.
 
 # Proposed wording
 
 The wording in this section is relative to the C++ Working Draft and assumes
-that the wording of [@VOCABULARY; @PREDICATES; @SERDES; @SCRIPT; @CHAIN] has
-been applied.
+that the wording of [@VOCABULARY] has been applied.
 
 [Add the following declarations to the `<bitcoin>` header synopsis in
 [bitcoin.syn].]{.ednote}
@@ -246,18 +231,45 @@ namespace bitcoin {
 *Returns:* The height of the block in which the transaction that created this
 coin was confirmed.
 
+### [bitcoin.validation.chain] Concept `chain_view`
+
+A type `T` models `chain_view` if and only if:
+
+- `T` models `std::ranges::view`;
+- `const T` models `std::ranges::random_access_range` and
+  `std::ranges::sized_range`; and
+- `std::ranges::range_reference_t<const T>` is convertible to
+  `bitcoin::block_header`.
+
+A `chain_view` represents the sequence of block headers on the path from the
+genesis block to a particular tip.
+
+```cpp
+namespace bitcoin {
+
+  template<class T>
+  concept chain_view =
+    std::ranges::view<T> &&
+    std::ranges::random_access_range<const T> &&
+    std::ranges::sized_range<const T> &&
+    std::convertible_to<std::ranges::range_reference_t<const T>,
+                        bitcoin::block_header>;
+
+} // namespace bitcoin
+```
+
 ### [bitcoin.validation.coinindex] Concept `coin_index`
 
 A type `T` models `coin_index` if it provides a lookup from `outpoint` to
-`std::optional<coin>`. The concept places no constraints on storage, caching,
-persistence, or concurrency strategy.
+`std::optional<const coin&>`. The concept places no constraints on storage,
+caching, persistence, or concurrency strategy.
 
 ```cpp
 namespace bitcoin {
 
   template<class T>
   concept coin_index = requires (T const& m, outpoint p) {
-    { m.lookup(p) } -> std::convertible_to<std::optional<coin>>;
+    { m.lookup(p) } -> std::same_as<std::optional<const coin&>>;
   };
 
 } // namespace bitcoin
@@ -649,11 +661,11 @@ failure. An exception indicates a true failure, not a negative verification
 result. A caller shall not interpret a propagated exception as a negative
 verification outcome.
 
-The contextual `verifier::operator()` overloads are constrained member
-function templates. Chain evidence is accepted as any type that models
-`chain_view` ([bitcoin.chain]); UTXO evidence is accepted as any type that
-models `coin_index`. The standardized interface does not expose or specify any
-type-erased adaptation mechanism.
+The overloads of `verifier::operator()` that take evidence parameters are
+constrained member function templates. Chain evidence is accepted as any type
+that models `chain_view` ([bitcoin.validation.chain]); UTXO evidence is accepted
+as any type that models `coin_index`. The standardized interface does not expose
+or specify any type-erased adaptation mechanism.
 
 Each overload evaluates the subset of Bitcoin consensus rules that can be
 evaluated with the evidence it receives, parameterized by `*params_`. An
@@ -665,7 +677,7 @@ consensus rule is outside the scope of this paper.
 An overload that takes no evidence parameter evaluates the *intrinsic* consensus
 rules of the object — rules that can be checked from the object alone. An
 overload that takes one or more evidence parameters evaluates a superset of the
-intrinsic rules, incorporating *contextual* rules that require the supplied
+intrinsic rules, incorporating additional rules that require the supplied
 evidence.
 
 `verifier` is a non-owning reference to its `consensus_parameters`. The caller
@@ -719,7 +731,7 @@ satisfies all intrinsic header consensus rules; otherwise
 *Remarks:* This overload evaluates only rules that can be checked against `h`
 alone. It does not compare `h` against any ancestor chain.
 
-#### [bitcoin.validation.verifier.header.contextual] `template<chain_view Chain> operator()(const block_header&, const Chain&, sys_seconds)`
+#### [bitcoin.validation.verifier.header.chain_time] `template<chain_view Chain> operator()(const block_header&, const Chain&, sys_seconds)`
 
 ```cpp
 template<chain_view Chain>
@@ -732,7 +744,7 @@ template<chain_view Chain>
 `chain` equals `h.prev_block_hash`.
 
 *Returns:* `verify_result<header_fact>{header_fact{block_hash{h}}}` if `h`
-satisfies all intrinsic and contextual header consensus rules; otherwise
+satisfies all header consensus rules evaluated by this overload; otherwise
 `verify_result<header_fact>{status}`, where `status.ok()` is `false`.
 
 *Remarks:* This overload evaluates a superset of the rules evaluated by
@@ -754,7 +766,7 @@ if `tx` satisfies all intrinsic transaction consensus rules; otherwise
 `verify_result<tx_fact>{status}`, where `status.ok()` is `false`. The `fee`
 member is zero for coinbase transactions.
 
-#### [bitcoin.validation.verifier.tx.contextual1] `template<chain_view Chain> operator()(const transaction&, const Chain&)`
+#### [bitcoin.validation.verifier.tx.chain] `template<chain_view Chain> operator()(const transaction&, const Chain&)`
 
 ```cpp
 template<chain_view Chain>
@@ -765,14 +777,14 @@ template<chain_view Chain>
 *Preconditions:* `chain` is non-empty.
 
 *Returns:* `verify_result<tx_fact>{tx_fact{...}}` if `tx` satisfies all
-intrinsic and contextual transaction consensus rules given `chain`; otherwise
+transaction consensus rules evaluated by this overload given `chain`; otherwise
 `verify_result<tx_fact>{status}`, where `status.ok()` is `false`.
 
 *Remarks:* This overload evaluates a superset of the rules evaluated by
 `operator()(const transaction&)`, incorporating rules that require the ancestor
 chain.
 
-#### [bitcoin.validation.verifier.tx.contextual2] `template<chain_view Chain, coin_index Coins> operator()(const transaction&, const Chain&, const Coins&)`
+#### [bitcoin.validation.verifier.tx.chain_coins] `template<chain_view Chain, coin_index Coins> operator()(const transaction&, const Chain&, const Coins&)`
 
 ```cpp
 template<chain_view Chain, coin_index Coins>
@@ -785,13 +797,14 @@ template<chain_view Chain, coin_index Coins>
 
 *Returns:*
 `verify_result<tx_fact>{tx_fact{txid{tx}, fee, legacy_sigops, witness_sigops}}`
-if `tx` satisfies all intrinsic and contextual transaction consensus rules given
-`chain` and `coins`; otherwise `verify_result<tx_fact>{status}`, where
+if `tx` satisfies all transaction consensus rules evaluated by this overload
+given `chain` and `coins`; otherwise `verify_result<tx_fact>{status}`, where
 `status.ok()` is `false`.
 
 *Remarks:* This overload evaluates a superset of the rules evaluated by the
 overload that accepts `tx` and `chain`, incorporating rules that require the
-UTXO set via `coins`. The implementation invokes only `lookup` on `coins`.
+UTXO set via `coins`. The implementation invokes only `lookup` on `coins` and
+borrows the referenced `coin` objects only for the duration of the call.
 
 #### [bitcoin.validation.verifier.block.intrinsic] `operator()(const block&)`
 
@@ -807,7 +820,7 @@ intrinsic block consensus rules; otherwise `verify_result<block_fact>{status}`,
 where `status.ok()` is `false`. The `undo` member of the returned `block_fact`
 is empty.
 
-#### [bitcoin.validation.verifier.block.contextual1] `template<chain_view Chain> operator()(const block&, const Chain&, sys_seconds)`
+#### [bitcoin.validation.verifier.block.chain_time] `template<chain_view Chain> operator()(const block&, const Chain&, sys_seconds)`
 
 ```cpp
 template<chain_view Chain>
@@ -820,16 +833,16 @@ template<chain_view Chain>
 `chain` equals `b.header().prev_block_hash`.
 
 *Returns:* `verify_result<block_fact>{block_fact{...}}` if `b` satisfies all
-intrinsic and contextual block consensus rules given `chain` and `now`;
+block consensus rules evaluated by this overload given `chain` and `now`;
 otherwise `verify_result<block_fact>{status}`, where `status.ok()` is `false`.
 The `undo` member of the returned `block_fact` is empty.
 
 *Remarks:* This overload evaluates a superset of the rules evaluated by
-`operator()(const block&)`, incorporating header-contextual rules via
-`operator()(b.header(), chain, now)` and per-transaction contextual rules. It
-does not evaluate rules that require the UTXO set.
+`operator()(const block&)`, incorporating the rules evaluated by
+`operator()(b.header(), chain, now)` and per-transaction rules that depend on
+`chain`. It does not evaluate rules that require the UTXO set.
 
-#### [bitcoin.validation.verifier.block.contextual2] `template<chain_view Chain, coin_index Coins> operator()(const block&, const Chain&, sys_seconds, const Coins&)`
+#### [bitcoin.validation.verifier.block.chain_time_coins] `template<chain_view Chain, coin_index Coins> operator()(const block&, const Chain&, sys_seconds, const Coins&)`
 
 ```cpp
 template<chain_view Chain, coin_index Coins>
@@ -844,7 +857,7 @@ template<chain_view Chain, coin_index Coins>
 
 *Returns:*
 `verify_result<block_fact>{block_fact{block_hash{b}, total_fees, subsidy, total_legacy_sigops, total_witness_sigops, undo}}`
-if `b` satisfies all intrinsic and contextual block consensus rules given
+if `b` satisfies all block consensus rules evaluated by this overload given
 `chain`, `now`, and `coins`; otherwise `verify_result<block_fact>{status}`,
 where `status.ok()` is `false`.
 
