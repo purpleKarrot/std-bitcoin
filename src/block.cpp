@@ -2,34 +2,10 @@
 
 #include <bitcoin/block.hpp>
 
-#include <cassert>
-#include <ranges>
-#include <vector>
-
 #include "serdes_decode.hpp"
 #include "serdes_encode.hpp"
 
 namespace bitcoin {
-
-block::block() = default;
-
-block::block(block_header header, std::vector<transaction> transactions)
-  : _header{header}
-  , _transactions{std::move(transactions)}
-{
-}
-
-auto block::header() const noexcept -> block_header const&
-{
-  return _header;
-}
-
-auto block::transactions() const -> transaction_view
-{
-  return _transactions;
-}
-
-bool operator==(block const& lhs, block const& rhs) noexcept = default;
 
 auto parse_block(std::span<std::byte const> raw) -> std::optional<block>
 {

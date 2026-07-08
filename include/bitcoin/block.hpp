@@ -6,6 +6,7 @@
 #include <memory>
 #include <optional>
 #include <span>
+#include <utility>
 #include <vector>
 
 #include <bitcoin/block_header.hpp>
@@ -26,13 +27,24 @@ class block
 public:
   using transaction_view = std::span<transaction const>;
 
-  block();
-  explicit block(block_header header, std::vector<transaction> transactions);
+  block() = default;
+  explicit block(block_header header, std::vector<transaction> transactions)
+    : _header{header}
+    , _transactions{std::move(transactions)}
+  {
+  }
 
-  [[nodiscard]] auto header() const noexcept -> block_header const&;
-  [[nodiscard]] auto transactions() const -> transaction_view;
+  [[nodiscard]] auto header() const noexcept -> block_header const&
+  {
+    return _header;
+  }
 
-  friend bool operator==(block const& lhs, block const& rhs) noexcept;
+  [[nodiscard]] auto transactions() const -> transaction_view
+  {
+    return _transactions;
+  }
+
+  friend bool operator==(block const& lhs, block const& rhs) noexcept = default;
   friend void detail::serialize(block const& b, detail::byte_sink_ref sink);
   friend auto serialized_size(block const& b) -> std::size_t;
 

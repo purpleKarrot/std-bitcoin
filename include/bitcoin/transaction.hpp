@@ -71,17 +71,33 @@ public:
   constexpr tx_input() = default;
   explicit tx_input(bitcoin::outpoint prevout, bitcoin::script script,
                     std::uint32_t sequence,
-                    std::vector<std::vector<std::byte>> witness = {});
+                    std::vector<std::vector<std::byte>> witness = {})
+    : _prevout{std::move(prevout)}
+    , _script{std::move(script)}
+    , _sequence{sequence}
+    , _witness{std::move(witness)}
+  {
+  }
 
   explicit tx_input(tx_input&& other,
-                    std::vector<std::vector<std::byte>> witness);
+                    std::vector<std::vector<std::byte>> witness)
+    : _prevout{std::move(other._prevout)}
+    , _script{std::move(other._script)}
+    , _sequence{other._sequence}
+    , _witness{std::move(witness)}
+  {
+  }
 
-  [[nodiscard]] auto prevout() const noexcept -> outpoint;
-  [[nodiscard]] auto script() const noexcept -> script_ref;
-  [[nodiscard]] auto sequence() const noexcept -> std::uint32_t;
-  [[nodiscard]] auto witness() const -> witness_view;
+  [[nodiscard]] auto prevout() const noexcept -> outpoint { return _prevout; }
+  [[nodiscard]] auto script() const noexcept -> script_ref { return _script; }
+  [[nodiscard]] auto sequence() const noexcept -> std::uint32_t
+  {
+    return _sequence;
+  }
+  [[nodiscard]] auto witness() const -> witness_view { return _witness; }
 
-  friend bool operator==(tx_input const& lhs, tx_input const& rhs) noexcept;
+  friend bool operator==(tx_input const& lhs,
+                         tx_input const& rhs) noexcept = default;
 
 private:
   bitcoin::outpoint _prevout;
@@ -94,12 +110,17 @@ class tx_output
 {
 public:
   constexpr tx_output() = default;
-  tx_output(bitcoin::amount value, bitcoin::script script);
+  tx_output(bitcoin::amount value, bitcoin::script script)
+    : _value{value}
+    , _script{std::move(script)}
+  {
+  }
 
-  [[nodiscard]] auto value() const noexcept -> amount;
-  [[nodiscard]] auto script() const noexcept -> script_ref;
+  [[nodiscard]] auto value() const noexcept -> amount { return _value; }
+  [[nodiscard]] auto script() const noexcept -> script_ref { return _script; }
 
-  friend bool operator==(tx_output const& lhs, tx_output const& rhs) noexcept;
+  friend bool operator==(tx_output const& lhs,
+                         tx_output const& rhs) noexcept = default;
 
 private:
   bitcoin::amount _value;
@@ -112,17 +133,25 @@ public:
   using input_view = std::span<tx_input const>;
   using output_view = std::span<tx_output const>;
 
-  transaction();
+  transaction() = default;
   explicit transaction(std::uint32_t version, std::vector<tx_input> inputs,
                        std::vector<tx_output> outputs, std::uint32_t locktime);
 
-  [[nodiscard]] auto version() const noexcept -> std::uint32_t;
-  [[nodiscard]] auto locktime() const noexcept -> std::uint32_t;
-  [[nodiscard]] auto inputs() const -> input_view;
-  [[nodiscard]] auto outputs() const -> output_view;
+  [[nodiscard]] auto version() const noexcept -> std::uint32_t
+  {
+    return _version;
+  }
+
+  [[nodiscard]] auto locktime() const noexcept -> std::uint32_t
+  {
+    return _locktime;
+  }
+
+  [[nodiscard]] auto inputs() const -> input_view { return _inputs; }
+  [[nodiscard]] auto outputs() const -> output_view { return _outputs; }
 
   friend bool operator==(transaction const& lhs,
-                         transaction const& rhs) noexcept;
+                         transaction const& rhs) noexcept = default;
   friend void detail::serialize(transaction const& tx,
                                 detail::byte_sink_ref sink);
   friend auto serialized_size(transaction const& tx) -> std::size_t;
@@ -133,9 +162,9 @@ private:
   std::vector<tx_output> _outputs;
   std::uint32_t _locktime{};
 
-  bool _has_witness;
-  std::array<std::byte, 32> _hash;
-  std::array<std::byte, 32> _witness_hash;
+  bool _has_witness{};
+  std::array<std::byte, 32> _hash{};
+  std::array<std::byte, 32> _witness_hash{};
 
   friend struct detail::txid_policy;
   friend struct detail::wtxid_policy;
