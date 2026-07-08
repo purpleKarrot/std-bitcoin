@@ -9,6 +9,8 @@
 #include <utility>
 #include <vector>
 
+#include <copy_on_write.hpp>
+
 #include <bitcoin/block_header.hpp>
 #include <bitcoin/transaction.hpp>
 
@@ -29,19 +31,18 @@ public:
 
   block() = default;
   explicit block(block_header header, std::vector<transaction> transactions)
-    : _header{header}
-    , _transactions{std::move(transactions)}
+    : _impl{std::in_place, header, std::move(transactions)}
   {
   }
 
   [[nodiscard]] auto header() const noexcept -> block_header const&
   {
-    return _header;
+    return _impl->header;
   }
 
   [[nodiscard]] auto transactions() const -> transaction_view
   {
-    return _transactions;
+    return _impl->transactions;
   }
 
   friend bool operator==(block const& lhs, block const& rhs) noexcept = default;
@@ -49,9 +50,16 @@ public:
   friend auto serialized_size(block const& b) -> std::size_t;
 
 private:
-  block_header _header;
-  std::vector<transaction> _transactions;
-  friend struct _impl_access;
+  struct implementation
+  {
+    block_header header;
+    std::vector<transaction> transactions;
+
+    friend bool operator==(implementation const& lhs,
+                           implementation const& rhs) noexcept = default;
+  };
+
+  xyz::copy_on_write<implementation> _impl;
 };
 
 [[nodiscard]] auto parse_block(std::span<std::byte const> raw)

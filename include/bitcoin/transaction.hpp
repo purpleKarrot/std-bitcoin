@@ -13,6 +13,7 @@
 #include <utility>
 
 #include <beman/any_view/any_view.hpp>
+#include <copy_on_write.hpp>
 
 #include <bitcoin/amount.hpp>
 #include <bitcoin/hash_id.hpp>
@@ -139,16 +140,16 @@ public:
 
   [[nodiscard]] auto version() const noexcept -> std::uint32_t
   {
-    return _version;
+    return _impl->version;
   }
 
   [[nodiscard]] auto locktime() const noexcept -> std::uint32_t
   {
-    return _locktime;
+    return _impl->locktime;
   }
 
-  [[nodiscard]] auto inputs() const -> input_view { return _inputs; }
-  [[nodiscard]] auto outputs() const -> output_view { return _outputs; }
+  [[nodiscard]] auto inputs() const -> input_view { return _impl->inputs; }
+  [[nodiscard]] auto outputs() const -> output_view { return _impl->outputs; }
 
   friend bool operator==(transaction const& lhs,
                          transaction const& rhs) noexcept = default;
@@ -157,17 +158,29 @@ public:
   friend auto serialized_size(transaction const& tx) -> std::size_t;
 
 private:
-  std::uint32_t _version{};
-  std::vector<tx_input> _inputs;
-  std::vector<tx_output> _outputs;
-  std::uint32_t _locktime{};
-
-  bool _has_witness{};
-  std::array<std::byte, 32> _hash{};
-  std::array<std::byte, 32> _witness_hash{};
-
   friend struct detail::txid_policy;
   friend struct detail::wtxid_policy;
+
+  struct implementation
+  {
+    implementation() = default;
+    implementation(std::uint32_t version_, std::vector<tx_input> inputs_,
+                   std::vector<tx_output> outputs_, std::uint32_t locktime_);
+
+    std::uint32_t version{};
+    std::vector<tx_input> inputs;
+    std::vector<tx_output> outputs;
+    std::uint32_t locktime{};
+
+    bool has_witness{};
+    std::array<std::byte, 32> hash{};
+    std::array<std::byte, 32> witness_hash{};
+
+    friend bool operator==(implementation const& lhs,
+                           implementation const& rhs) noexcept = default;
+  };
+
+  xyz::copy_on_write<implementation> _impl;
 };
 
 auto parse_transaction(std::span<std::byte const> raw)

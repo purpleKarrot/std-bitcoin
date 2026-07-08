@@ -11,6 +11,7 @@
 #include "serdes_encode.hpp"
 
 namespace bitcoin {
+namespace detail {
 namespace {
 
 inline bool has_witness(std::vector<tx_input> const& inputs)
@@ -20,41 +21,53 @@ inline bool has_witness(std::vector<tx_input> const& inputs)
 }
 
 } // namespace
+} // namespace detail
 
 transaction::transaction(std::uint32_t version, std::vector<tx_input> inputs,
                          std::vector<tx_output> outputs, std::uint32_t locktime)
-  : _version{version}
-  , _inputs{std::move(inputs)}
-  , _outputs{std::move(outputs)}
-  , _locktime{locktime}
-  , _has_witness{has_witness(_inputs)}
+  : _impl{std::in_place, version, std::move(inputs), std::move(outputs),
+          locktime}
 {
-  {
-    auto hasher = HashWriter{};
-    serdes::encode_tx(serdes::witness::disallow)(hasher, *this);
-    auto const hash = hasher.GetHash();
-    std::ranges::transform(hash, _hash.begin(),
-                           [](auto byte) { return std::byte{byte}; });
-  }
-  {
-    auto hasher = HashWriter{};
-    serdes::encode_tx(serdes::witness::allow)(hasher, *this);
-    auto const hash = hasher.GetHash();
-    std::ranges::transform(hash, _witness_hash.begin(),
-                           [](auto byte) { return std::byte{byte}; });
-  }
+  _impl.modify([this](implementation& impl) {
+    {
+      auto hasher = HashWriter{};
+      serdes::encode_tx(serdes::witness::disallow)(hasher, *this);
+      auto const hash_ = hasher.GetHash();
+      std::ranges::transform(hash_, impl.hash.begin(),
+                             [](auto byte) { return std::byte{byte}; });
+    }
+    {
+      auto hasher = HashWriter{};
+      serdes::encode_tx(serdes::witness::allow)(hasher, *this);
+      auto const hash_ = hasher.GetHash();
+      std::ranges::transform(hash_, impl.witness_hash.begin(),
+                             [](auto byte) { return std::byte{byte}; });
+    }
+  });
+}
+
+transaction::implementation::implementation(std::uint32_t version_,
+                                            std::vector<tx_input> inputs_,
+                                            std::vector<tx_output> outputs_,
+                                            std::uint32_t locktime_)
+  : version{version_}
+  , inputs{std::move(inputs_)}
+  , outputs{std::move(outputs_)}
+  , locktime{locktime_}
+  , has_witness{detail::has_witness(inputs)}
+{
 }
 
 void detail::txid_policy::operator()(bitcoin::transaction const& tx,
                                      std::span<std::byte, 32ul> dst) const
 {
-  std::ranges::copy(tx._hash, dst.begin());
+  std::ranges::copy(tx._impl->hash, dst.begin());
 }
 
 void detail::wtxid_policy::operator()(bitcoin::transaction const& tx,
                                       std::span<std::byte, 32ul> dst) const
 {
-  std::ranges::copy(tx._witness_hash, dst.begin());
+  std::ranges::copy(tx._impl->witness_hash, dst.begin());
 }
 
 auto parse_transaction(std::span<std::byte const> raw)
