@@ -69,7 +69,7 @@ execution failures remain exceptional and propagate via exceptions.
 
 This paper depends on the companion paper [@VOCABULARY].
 
-# Motivation and Scope
+# Motivation
 
 Bitcoin software needs a common interface for consensus validation that is
 independent of any particular node, chainstate, or UTXO-set implementation. This
@@ -84,48 +84,10 @@ validation by-products, together with overloads that make progressively richer
 evidence explicit in the function signature. The public interface is expressed
 entirely in terms of vocabulary types from [@VOCABULARY].
 
-## In scope
-
-- The concept `bitcoin::chain_view`.
-- The vocabulary type `bitcoin::coin`.
-- The concept `bitcoin::coin_index`.
-- The class `bitcoin::verification_status`.
-- The class template `bitcoin::verify_result<Fact>`.
-- The fact types `bitcoin::header_fact`, `bitcoin::tx_fact`,
-  `bitcoin::block_undo`, and `bitcoin::block_fact`.
-- The aggregate `bitcoin::consensus_parameters`.
-- The class `bitcoin::verifier`.
-- The predefined `inline constexpr` object `bitcoin::verify`.
-- The predefined `inline constexpr` object `bitcoin::testnet::verify`.
-- The predefined `inline constexpr` object `bitcoin::signet::verify`.
-- The predefined `inline constexpr` object `bitcoin::regtest::verify`.
-
-## Out of scope
-
-- The Bitcoin consensus rules themselves. Each `verifier::operator()` overload
-  evaluates a defined subset of the consensus rules; which rules belong to which
-  subset is determined by the overload's evidence parameters. The precise
-  definition of each rule is outside the scope of this paper.
-- Node-level functions that produce chain objects or manage chainstate.
-- UTXO set storage, caching strategy, and database implementation.
-- Mempool policy rules.
-- Network or P2P protocol concerns.
-- Script execution engine (the `verifier` invokes script evaluation as a
-  subroutine but does not specify the interpreter).
-- Chain-property derivation functions such as median-time-past and
-  difficulty-target computation. These are internal implementation details of
-  `verifier::operator()` and are not exposed.
-
 # Impact on the Standard
 
-This is a pure library addition. It adds declarations to `namespace bitcoin` and
-nested namespaces inside the `<bitcoin>` header. It requires no core language
-changes and introduces no new standard library dependencies beyond `<chrono>`,
-`<concepts>`, `<cstdint>`, `<format>`, `<optional>`, `<ranges>`, and `<vector>`,
-which are already required by the papers on which this paper depends or by the
-C++ standard library.
-
-No existing names are modified or deprecated.
+This is a pure library addition to the `<bitcoin>` header. It requires no core
+language changes and does not modify or deprecate existing names.
 
 # Design considerations
 
