@@ -53,7 +53,7 @@ FetchContent_MakeAvailable(
 
 add_library(stdbtc)
 
-target_compile_features(stdbtc PUBLIC cxx_std_20)
+target_compile_features(stdbtc PUBLIC cxx_std_23)
 target_link_libraries(stdbtc
   PUBLIC
     beman::any_view
@@ -70,7 +70,7 @@ target_include_directories(stdbtc PRIVATE
 
 target_sources(stdbtc
   PUBLIC FILE_SET HEADERS BASE_DIRS include FILES
-    include/bitcoin/serialization/byte_sink.hpp
+    include/bitcoin/serdes/byte_sink.hpp
     include/bitcoin/amount.hpp
     include/bitcoin/block.hpp
     include/bitcoin/block_header.hpp

@@ -9,21 +9,21 @@
 #include <type_traits>
 
 namespace bitcoin {
-namespace serialization {
+namespace serdes {
 
 template <class Sink>
 concept byte_sink = requires(Sink& sink, std::span<std::byte const> bytes) {
   { sink.write(bytes) };
 };
 
-} // namespace serialization
+} // namespace serdes
 
 namespace detail {
 
 class byte_sink_ref
 {
 public:
-  template <serialization::byte_sink Sink>
+  template <serdes::byte_sink Sink>
     requires(!std::same_as<std::remove_cvref_t<Sink>, byte_sink_ref>)
   constexpr byte_sink_ref(Sink& sink) noexcept
     : _object(std::addressof(sink))
@@ -41,6 +41,8 @@ private:
   void* _object;
   write_fn _write;
 };
+
+static_assert(serdes::byte_sink<byte_sink_ref>);
 
 } // namespace detail
 } // namespace bitcoin

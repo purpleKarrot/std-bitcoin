@@ -53,7 +53,7 @@ private:
 [[nodiscard]] auto parse_block(std::span<std::byte const> raw)
   -> std::optional<block>;
 
-template <serialization::byte_sink Sink>
+template <serdes::byte_sink Sink>
 void serialize(block const& b, Sink& sink)
 {
   detail::serialize(b, detail::byte_sink_ref{sink});

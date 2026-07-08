@@ -17,7 +17,7 @@
 #include <bitcoin/amount.hpp>
 #include <bitcoin/hash_id.hpp>
 #include <bitcoin/script.hpp>
-#include <bitcoin/serialization/byte_sink.hpp>
+#include <bitcoin/serdes/byte_sink.hpp>
 
 namespace bitcoin {
 
@@ -139,7 +139,7 @@ private:
 auto parse_transaction(std::span<std::byte const> raw)
   -> std::optional<transaction>;
 
-template <serialization::byte_sink Sink>
+template <serdes::byte_sink Sink>
 void serialize(transaction const& tx, Sink& sink)
 {
   detail::serialize(tx, detail::byte_sink_ref{sink});

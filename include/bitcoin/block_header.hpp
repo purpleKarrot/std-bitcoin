@@ -9,7 +9,7 @@
 #include <span>
 
 #include <bitcoin/hash_id.hpp>
-#include <bitcoin/serialization/byte_sink.hpp>
+#include <bitcoin/serdes/byte_sink.hpp>
 
 namespace bitcoin {
 
@@ -37,7 +37,7 @@ void serialize(block_header const& header, byte_sink_ref sink);
 
 } // namespace detail
 
-template <serialization::byte_sink Sink>
+template <serdes::byte_sink Sink>
 void serialize(block_header const& header, Sink& sink)
 {
   detail::serialize(header, detail::byte_sink_ref{sink});

@@ -7,7 +7,7 @@
 
 #include "hash.h"
 #include "primitives/block.h"
-#include "serialize.h"
+#include "serdes_encode.hpp"
 #include "streams.h"
 
 namespace bitcoin {
@@ -37,12 +37,8 @@ auto parse_block_header(std::span<std::byte const> raw)
 
 void detail::serialize(block_header const& header, byte_sink_ref sink)
 {
-  ::Serialize(sink, header.version);
-  ::Serialize(sink, as_bytes(header.prev_block_hash));
-  ::Serialize(sink, as_bytes(header.merkle_root));
-  ::Serialize(sink, uint32_t(header.time.time_since_epoch().count()));
-  ::Serialize(sink, header.bits);
-  ::Serialize(sink, header.nonce);
+  auto buf = serdes::buffered_sink<byte_sink_ref, 80>{std::move(sink)};
+  serdes::encode_block_header(buf, header);
 }
 
 auto serialized_size(block_header const&) -> std::size_t
@@ -56,7 +52,7 @@ void detail::block_hash_policy::operator()(block_header const& hdr,
                                            std::span<std::byte, 32> dst) const
 {
   auto hasher = HashWriter{};
-  serialize(hdr, hasher);
+  serdes::encode_block_header(hasher, hdr);
   auto const hash = hasher.GetHash();
   std::ranges::transform(hash, dst.begin(),
                          [](auto byte) { return std::byte{byte}; });
