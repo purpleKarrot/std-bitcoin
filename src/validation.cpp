@@ -40,24 +40,15 @@ bool is_valid_flag_combination(script_verify_flags flags)
   return true;
 }
 
-auto as_CScript(bitcoin::script_ref script) -> CScript
-{
-  auto const bytes = as_bytes(script);
-  auto const* data = reinterpret_cast<uint8_t const*>(bytes.data());
-  return {data, data + bytes.size()};
-}
-
 } // namespace
 
 namespace bitcoin {
 
 validation_status verifier::verify(block_header const& header) const
 {
-  auto params = CChainParams::Main()->GetConsensus();
-  auto const bytes = as_bytes(block_hash{header});
-  auto const* data = reinterpret_cast<unsigned char const*>(bytes.data());
-  auto const hash = std::span{data, 32};
-  bool const result = CheckProofOfWork(uint256{hash}, header.bits, params);
+  auto const hash = legacy::convert_uint256(block_hash{header});
+  auto const params = legacy::convert_consensus(*_params);
+  bool const result = CheckProofOfWork(hash, header.bits, params);
   return result ? 0 : -1; // BlockValidationResult::BLOCK_INVALID_HEADER
 }
 
@@ -69,8 +60,8 @@ validation_status verifier::verify(block_header const& header) const
 validation_status verifier::verify(bitcoin::block const& b) const
 {
   auto const block = legacy::convert_block(b);
+  auto const params = legacy::convert_consensus(*_params);
   auto state = BlockValidationState{};
-  auto params = CChainParams::Main()->GetConsensus();
   bool const result = CheckBlock(block, state, params);
   return result ? 0 : -1; // state.GetResult();
 }
@@ -133,7 +124,7 @@ validation_status verifier::verify(script_ref script, amount value,
     MissingDataBehavior::FAIL);
 
   bool const result = VerifyScript(
-    tx.vin[input_index].scriptSig, as_CScript(script),
+    tx.vin[input_index].scriptSig, legacy::convert_script(script),
     &tx.vin[input_index].scriptWitness,
     script_verify_flags::from_int(static_cast<int>(flags)), checker, nullptr);
 

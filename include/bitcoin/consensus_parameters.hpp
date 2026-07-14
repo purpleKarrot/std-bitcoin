@@ -7,11 +7,23 @@
 #include <limits>
 
 #include <bitcoin/amount.hpp>
+#include <bitcoin/hash_id.hpp>
 
 namespace bitcoin {
 
 struct consensus_parameters
 {
+  block_hash genesis_block_hash = block_hash{std::array{
+    std::byte{0x00}, std::byte{0x00}, std::byte{0x00}, std::byte{0x00},
+    std::byte{0x00}, std::byte{0x19}, std::byte{0xd6}, std::byte{0x68},
+    std::byte{0x9c}, std::byte{0x08}, std::byte{0x5a}, std::byte{0xe1},
+    std::byte{0x65}, std::byte{0x83}, std::byte{0x1e}, std::byte{0x93},
+    std::byte{0x4f}, std::byte{0xf7}, std::byte{0x63}, std::byte{0xae},
+    std::byte{0x46}, std::byte{0xa2}, std::byte{0xa6}, std::byte{0xc1},
+    std::byte{0x72}, std::byte{0xb3}, std::byte{0xf1}, std::byte{0xb6},
+    std::byte{0x0a}, std::byte{0x8c}, std::byte{0xe2}, std::byte{0x6f},
+  }};
+
   // Proof of work
   std::uint32_t proof_of_work_limit = 0x1d00ffff;
   std::size_t retarget_interval = 2016;

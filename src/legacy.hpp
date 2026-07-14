@@ -4,9 +4,11 @@
 
 #include <bitcoin/amount.hpp>
 #include <bitcoin/block.hpp>
+#include <bitcoin/consensus_parameters.hpp>
 #include <bitcoin/hash_id.hpp>
 #include <bitcoin/transaction.hpp>
 
+#include "consensus/params.h"
 #include "primitives/block.h"
 #include "primitives/transaction.h"
 
@@ -91,5 +93,34 @@ inline constexpr auto convert_block = [](bitcoin::block const& in) {
     | std::ranges::to<std::vector>();
   return out;
 };
+
+inline constexpr auto convert_consensus =
+  [](bitcoin::consensus_parameters const& in) {
+    auto out = Consensus::Params{};
+
+    out.hashGenesisBlock = convert_uint256(in.genesis_block_hash);
+    out.nSubsidyHalvingInterval = static_cast<int>(in.halving_interval);
+    // out.script_flag_exceptions;
+    // out.BIP34Height;
+    // out.BIP34Hash;
+    // out.BIP65Height;
+    // out.BIP66Height;
+    // out.CSVHeight;
+    // out.SegwitHeight;
+    // out.MinBIP9WarningHeight;
+    // out.vDeployments;
+    // out.powLimit;
+    // out.fPowAllowMinDifficultyBlocks;
+    // out.enforce_BIP94;
+    // out.fPowNoRetargeting;
+    // out.nPowTargetSpacing;
+    // out.nPowTargetTimespan;
+    // out.nMinimumChainWork;
+    // out.defaultAssumeValid;
+    // out.signet_blocks;
+    // out.signet_challenge;
+
+    return out;
+  };
 
 } // namespace legacy
