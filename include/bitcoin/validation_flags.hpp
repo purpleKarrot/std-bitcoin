@@ -41,7 +41,7 @@ struct formatter<bitcoin::validation_flags>
 {
   constexpr auto parse(format_parse_context& ctx)
   {
-    auto it = ctx.begin();
+    format_parse_context::iterator const it = ctx.begin();
     if (it != ctx.end() && *it != '}') {
       throw format_error("unexpected format specifier");
     }

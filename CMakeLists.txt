@@ -100,4 +100,12 @@ target_sources(stdbtc
     src/validation_status.cpp
   )
 
+set_target_properties(stdbtc PROPERTIES
+  CXX_CLANG_TIDY "clang-tidy"
+  CXX_INCLUDE_WHAT_YOU_USE "include-what-you-use"
+  )
+set_source_files_properties(src/validation.cpp PROPERTIES
+  SKIP_LINTING ON
+  )
+
 add_subdirectory(tests)

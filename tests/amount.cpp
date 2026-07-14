@@ -13,7 +13,7 @@ TEST_CASE("amount construction")
   CHECK(amount{}.numerical_value_in(satoshi) == 0);
   CHECK(amount::zero().numerical_value_in(satoshi) == 0);
   CHECK((42 * satoshi).numerical_value_in(satoshi) == 42);
-  CHECK((1 * btc).numerical_value_in(satoshi) == 100'000'000);
+  CHECK(amount{1, btc}.numerical_value_in(satoshi) == 100'000'000);
 }
 
 TEST_CASE("amount arithmetic")

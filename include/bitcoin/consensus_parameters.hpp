@@ -18,7 +18,7 @@ struct consensus_parameters
   std::int64_t target_timespan_seconds = 14 * 24 * 60 * 60;
 
   // Block subsidy
-  amount initial_subsidy = 50 * units::btc;
+  amount initial_subsidy = amount{50, units::btc};
   std::size_t halving_interval = 210'000;
 
   // Coinbase maturity (confirmations required before a coinbase output may be
@@ -57,7 +57,7 @@ inline constexpr auto params = consensus_parameters{
   .proof_of_work_limit = 0x1d00ffff,
   .retarget_interval = 2016,
   .target_timespan_seconds = 14 * 24 * 60 * 60,
-  .initial_subsidy = 50 * units::btc,
+  .initial_subsidy = amount{50, units::btc},
   .halving_interval = 210'000,
   .coinbase_maturity = 100,
   .max_block_weight = 4'000'000,
@@ -81,7 +81,7 @@ inline constexpr auto params = consensus_parameters{
   .proof_of_work_limit = 0x1e0377ae,
   .retarget_interval = 2016,
   .target_timespan_seconds = 14 * 24 * 60 * 60,
-  .initial_subsidy = 50 * units::btc,
+  .initial_subsidy = amount{50, units::btc},
   .halving_interval = 210'000,
   .coinbase_maturity = 100,
   .max_block_weight = 4'000'000,
@@ -105,7 +105,7 @@ inline constexpr auto params = consensus_parameters{
   .proof_of_work_limit = 0x207fffff,
   .retarget_interval = std::numeric_limits<std::size_t>::max(),
   .target_timespan_seconds = 14 * 24 * 60 * 60,
-  .initial_subsidy = 50 * units::btc,
+  .initial_subsidy = amount{50, units::btc},
   .halving_interval = 150,
   .coinbase_maturity = 100,
   .max_block_weight = 4'000'000,

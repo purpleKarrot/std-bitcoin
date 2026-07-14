@@ -1,0 +1,21 @@
+---
+Checks: >-
+  -*,
+  bugprone-*,
+  -bugprone-std-namespace-modification,
+  misc-*,
+  -misc-include-cleaner,
+  -misc-non-private-member-variables-in-classes,
+  modernize-*,
+  -modernize-use-trailing-return-type,
+  performance-*,
+  readability-*,
+  -readability-convert-member-functions-to-static,
+  -readability-identifier-length,
+  -readability-magic-numbers,
+  -readability-named-parameter,
+  -readability-uppercase-literal-suffix,
+HeaderFilterRegex: '.*\.hpp$'
+UseColor: true
+WarningsAsErrors: '*'
+...

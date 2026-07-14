@@ -18,12 +18,6 @@
 
 namespace bitcoin::serdes {
 
-enum class witness
-{
-  disallow,
-  allow,
-};
-
 template <std::integral T>
 constexpr T to_le(T v) noexcept
 {
@@ -83,13 +77,11 @@ inline constexpr auto encode_bytes = [](auto& w,
   w.write(bytes);
 };
 
-// TODO: investigate what any_view has against a range based loop here
 inline constexpr auto encode_range = [](auto& w, auto&& range,
                                         auto encode_elem) {
-  std::size_t const size = std::ranges::size(range);
-  encode_size(w, size);
-  for (std::size_t i = 0; i < size; ++i) {
-    encode_elem(w, range[i]);
+  encode_size(w, std::ranges::size(range));
+  for (auto&& elem : std::forward<decltype(range)>(range)) {
+    encode_elem(w, elem);
   }
 };
 
@@ -109,28 +101,31 @@ inline constexpr auto encode_txout = [](auto& w, tx_output const& out) {
   encode_bytes(w, as_bytes(out.script()));
 };
 
-inline constexpr auto encode_tx = [](witness wmode) {
-  return [=](auto& w, transaction const& tx) {
-    bool const with_witness = (wmode == witness::allow) && is_segwit(tx);
+inline constexpr auto encode_tx_data =
+  [](auto& w, std::uint32_t version, std::span<tx_input const> inputs,
+     std::span<tx_output const> outputs, std::uint32_t locktime, bool segwit) {
+    encode_u32(w, version);
 
-    encode_u32(w, tx.version());
-
-    if (with_witness) {
+    if (segwit) {
       encode_u8(w, 0);
       encode_u8(w, 1);
     }
 
-    encode_range(w, tx.inputs(), encode_txin);
-    encode_range(w, tx.outputs(), encode_txout);
+    encode_range(w, inputs, encode_txin);
+    encode_range(w, outputs, encode_txout);
 
-    if (with_witness) {
-      for (auto const& in : tx.inputs()) {
+    if (segwit) {
+      for (auto const& in : inputs) {
         encode_range(w, in.witness(), encode_bytes);
       }
     }
 
-    encode_u32(w, tx.locktime());
+    encode_u32(w, locktime);
   };
+
+inline constexpr auto encode_tx = [](auto& w, transaction const& tx) {
+  encode_tx_data(w, tx.version(), tx.inputs(), tx.outputs(), tx.locktime(),
+                 is_segwit(tx));
 };
 
 inline constexpr auto encode_block_header = [](auto& w, block_header const& h) {
@@ -144,7 +139,8 @@ inline constexpr auto encode_block_header = [](auto& w, block_header const& h) {
 
 inline constexpr auto encode_block = [](auto& w, block const& b) {
   encode_block_header(w, b.header());
-  encode_range(w, b.transactions(), encode_tx(witness::allow));
+  encode_range(w, b.transactions(),
+               [](auto& w, transaction const& tx) { encode_tx(w, tx); });
 };
 
 template <byte_sink Sink, std::size_t BufferSize = 512>

@@ -2,8 +2,15 @@
 
 #include <bitcoin/predicates.hpp>
 
+#include <cstddef>
+#include <span>
+
 #include <bitcoin/block.hpp>
+#include <bitcoin/hash_id.hpp>
+#include <bitcoin/script.hpp>
 #include <bitcoin/transaction.hpp>
+
+#include "copy_on_write.hpp"
 
 namespace bitcoin {
 
@@ -41,8 +48,7 @@ bool is_coinbase(transaction const& t)
 
 bool is_segwit(transaction const& t)
 {
-  return std::ranges::any_of(
-    t.inputs(), [](auto const& input) { return !input.witness().empty(); });
+  return t._impl->is_segwit;
 }
 
 bool locktime_is_height(transaction const& t) noexcept

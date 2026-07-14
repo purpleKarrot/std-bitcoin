@@ -39,22 +39,22 @@ class span_source
 {
 public:
   constexpr explicit span_source(std::span<std::byte const> data)
-    : data_{data}
+    : _data{data}
   {
   }
 
   constexpr std::size_t read_some(std::span<std::byte> out)
   {
-    auto n = std::min(out.size(), data_.size());
-    std::memcpy(out.data(), data_.data(), n);
-    data_ = data_.subspan(n);
+    auto n = std::min(out.size(), _data.size());
+    std::memcpy(out.data(), _data.data(), n);
+    _data = _data.subspan(n);
     return n;
   }
 
-  [[nodiscard]] constexpr bool empty() const { return data_.empty(); }
+  [[nodiscard]] constexpr bool empty() const { return _data.empty(); }
 
 private:
-  std::span<std::byte const> data_;
+  std::span<std::byte const> _data;
 };
 
 template <byte_source Source>

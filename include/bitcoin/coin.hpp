@@ -18,7 +18,7 @@ namespace bitcoin {
 class coin
 {
 public:
-  constexpr coin() noexcept = default;
+  coin() = default;
   constexpr coin(bitcoin::amount value, bitcoin::script_ref output_script,
                  std::size_t funding_height, bool coinbase = false)
     : _value{value}
@@ -28,7 +28,7 @@ public:
   {
   }
 
-  [[nodiscard]] constexpr auto value() const noexcept -> bitcoin::amount
+  [[nodiscard]] constexpr auto value() const -> bitcoin::amount
   {
     return _value;
   }
@@ -38,17 +38,17 @@ public:
     return _output_script;
   }
 
-  [[nodiscard]] constexpr auto funding_height() const noexcept -> std::size_t
+  [[nodiscard]] constexpr auto funding_height() const -> std::size_t
   {
     return _funding_height;
   }
 
-  friend constexpr auto is_coinbase(coin const& c) noexcept -> bool
+  [[nodiscard]] friend constexpr auto is_coinbase(coin const& c) -> bool
   {
     return c._coinbase;
   }
 
-  friend bool operator==(coin const& lhs, coin const& rhs) noexcept = default;
+  friend bool operator==(coin const&, coin const&) = default;
 
 private:
   bitcoin::script _output_script;

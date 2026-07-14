@@ -2,6 +2,10 @@
 
 #include <bitcoin/block.hpp>
 
+#include <mp-units/framework.h>
+
+#include <bitcoin/serdes/byte_sink.hpp>
+
 #include "serdes_decode.hpp"
 #include "serdes_encode.hpp"
 
@@ -19,7 +23,7 @@ auto parse_block(std::span<std::byte const> raw) -> std::optional<block>
 
 void detail::serialize(block const& b, byte_sink_ref sink)
 {
-  auto buf = serdes::buffered_sink<byte_sink_ref>{std::move(sink)};
+  auto buf = serdes::buffered_sink<byte_sink_ref>{sink};
   serdes::encode_block(buf, b);
 }
 
@@ -28,12 +32,6 @@ auto serialized_size(block const& b) -> std::size_t
   auto sink = serdes::counting_sink{};
   serdes::encode_block(sink, b);
   return sink.size();
-}
-
-void detail::block_hash_policy::operator()(block const& b,
-                                           std::span<std::byte, 32> dst) const
-{
-  operator()(b.header(), dst);
 }
 
 } // namespace bitcoin

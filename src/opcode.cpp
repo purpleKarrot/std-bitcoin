@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: BSL-1.0
 
+#include <format>
+#include <string_view>
+
 #include <bitcoin/script.hpp>
 
 namespace {

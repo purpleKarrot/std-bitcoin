@@ -2,8 +2,13 @@
 
 #include <bitcoin/block_header.hpp>
 
+#include <algorithm>
+#include <array>
 #include <cstddef>
 #include <span>
+
+#include <bitcoin/hash_id.hpp>
+#include <bitcoin/serdes/byte_sink.hpp>
 
 #include "hash.h"
 #include "serdes_decode.hpp"
@@ -24,25 +29,26 @@ auto parse_block_header(std::span<std::byte const> raw)
 
 void detail::serialize(block_header const& header, byte_sink_ref sink)
 {
-  auto buf = serdes::buffered_sink<byte_sink_ref, 80>{std::move(sink)};
+  auto buf = serdes::buffered_sink<byte_sink_ref, 80>{sink};
   serdes::encode_block_header(buf, header);
 }
 
-auto serialized_size(block_header const&) -> std::size_t
+auto serialized_size(block_header const& /*unused*/) -> std::size_t
 {
   return 80;
 }
 
 namespace detail {
 
-void detail::block_hash_policy::operator()(block_header const& hdr,
-                                           std::span<std::byte, 32> dst) const
+auto detail::block_hash_policy::operator()(block_header const& hdr) const
+  -> std::array<std::byte, 32>
 {
   auto hasher = HashWriter{};
+  auto hash = std::array<std::byte, 32>{};
   serdes::encode_block_header(hasher, hdr);
-  auto const hash = hasher.GetHash();
-  std::ranges::transform(hash, dst.begin(),
+  std::ranges::transform(hasher.GetHash(), hash.begin(),
                          [](auto byte) { return std::byte{byte}; });
+  return hash;
 }
 
 } // namespace detail

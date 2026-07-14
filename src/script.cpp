@@ -28,7 +28,7 @@ inline constexpr auto script_element_size_limit = std::size_t{520};
 
 struct parsed_instruction
 {
-  bitcoin::instruction value{};
+  bitcoin::instruction value;
   std::size_t size = 0;
   bool valid = false;
 };

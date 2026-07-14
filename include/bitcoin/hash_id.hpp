@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <array>
+#include <concepts>
 #include <cstddef>
 #include <format>
 #include <span>
@@ -19,18 +20,18 @@ namespace detail {
 
 struct block_hash_policy
 {
-  void operator()(block const& b, std::span<std::byte, 32> dst) const;
-  void operator()(block_header const& hdr, std::span<std::byte, 32> dst) const;
+  auto operator()(block const& b) const -> std::array<std::byte, 32>;
+  auto operator()(block_header const& hdr) const -> std::array<std::byte, 32>;
 };
 
 struct txid_policy
 {
-  void operator()(transaction const& tx, std::span<std::byte, 32> dst) const;
+  auto operator()(transaction const& tx) const -> std::array<std::byte, 32>;
 };
 
 struct wtxid_policy
 {
-  void operator()(transaction const& tx, std::span<std::byte, 32> dst) const;
+  auto operator()(transaction const& tx) const -> std::array<std::byte, 32>;
 };
 
 struct hash256_policy
@@ -38,8 +39,8 @@ struct hash256_policy
 };
 
 template <class T, class Policy>
-concept is_hash_source = requires(T const& src, std::span<std::byte, 32> dst) {
-  { Policy{}(src, dst) };
+concept is_hash_source = requires(T const& src) {
+  { Policy{}(src) } -> std::same_as<std::array<std::byte, 32>>;
 };
 
 template <class Policy>
@@ -56,8 +57,8 @@ public:
 
   template <is_hash_source<Policy> T>
   explicit basic_hash_id(T const& src)
+    : _value{Policy{}(src)}
   {
-    Policy{}(src, _value);
   }
 
   [[nodiscard]] constexpr explicit operator bool() const noexcept
@@ -71,10 +72,8 @@ private:
     return std::span{hash._value};
   }
 
-  friend constexpr bool operator==(basic_hash_id const&,
-                                   basic_hash_id const&) noexcept = default;
-  friend constexpr auto operator<=>(basic_hash_id const&,
-                                    basic_hash_id const&) noexcept = default;
+  friend bool operator==(basic_hash_id const&, basic_hash_id const&) = default;
+  friend auto operator<=>(basic_hash_id const&, basic_hash_id const&) = default;
 
   std::array<std::byte, 32> _value{};
 };

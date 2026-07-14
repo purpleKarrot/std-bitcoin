@@ -14,7 +14,7 @@ inline constexpr struct amount_dimension final
 } amount_dimension;
 
 inline constexpr struct bitcoin_amount final
-  : ::mp_units ::quantity_spec<bitcoin_amount, amount_dimension>
+  : mp_units::quantity_spec<amount_dimension>
 {
 } bitcoin_amount;
 

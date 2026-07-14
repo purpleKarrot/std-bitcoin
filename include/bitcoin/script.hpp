@@ -12,6 +12,7 @@
 #include <optional>
 #include <ranges>
 #include <span>
+#include <string_view>
 #include <vector>
 
 namespace bitcoin {
@@ -197,7 +198,7 @@ private:
   }
 
   opcode _code{};
-  std::span<std::byte const> _immediate{};
+  std::span<std::byte const> _immediate;
 };
 
 class witness_program_ref
@@ -226,7 +227,7 @@ public:
 
 private:
   std::uint8_t _version{};
-  std::span<std::byte const> _program{};
+  std::span<std::byte const> _program;
 };
 
 class script;
@@ -257,8 +258,8 @@ public:
     explicit iterator(std::span<std::byte const> bytes) noexcept;
     void _read_next() noexcept;
 
-    std::span<std::byte const> _remaining{};
-    value_type _current{};
+    std::span<std::byte const> _remaining;
+    value_type _current;
     std::size_t _current_size = 0;
     bool _at_end = true;
 
@@ -276,7 +277,7 @@ public:
 private:
   explicit instruction_view(std::span<std::byte const> bytes) noexcept;
 
-  std::span<std::byte const> _bytes{};
+  std::span<std::byte const> _bytes;
 
   friend auto instructions(script_ref value) noexcept -> instruction_view;
 };
@@ -311,7 +312,7 @@ public:
   }
 
 private:
-  std::span<std::byte const> _bytes{};
+  std::span<std::byte const> _bytes;
 };
 
 class script
@@ -352,7 +353,7 @@ private:
   void _append_size(std::size_t size);
   void _append_bytes(std::span<std::byte const> bytes);
 
-  std::vector<std::byte> _bytes{};
+  std::vector<std::byte> _bytes;
 };
 
 [[nodiscard]] auto instructions(script_ref value) noexcept -> instruction_view;

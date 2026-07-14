@@ -16,7 +16,7 @@ public:
   {
   }
 
-  constexpr auto ok() const { return _status == 0; }
+  [[nodiscard]] constexpr auto ok() const { return _status == 0; }
   constexpr explicit operator bool() const { return ok(); }
 
 private:
@@ -32,7 +32,7 @@ struct formatter<bitcoin::validation_status>
 {
   constexpr auto parse(format_parse_context& ctx)
   {
-    auto it = ctx.begin();
+    format_parse_context::iterator const it = ctx.begin();
     if (it != ctx.end() && *it != '}') {
       throw format_error("unexpected format specifier");
     }

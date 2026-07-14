@@ -22,10 +22,8 @@ struct block_header
   std::uint32_t bits;
   std::uint32_t nonce;
 
-  friend bool operator==(block_header const& lhs,
-                         block_header const& rhs) noexcept = default;
-  friend auto operator<=>(block_header const& lhs,
-                          block_header const& rhs) noexcept = default;
+  friend bool operator==(block_header const&, block_header const&) = default;
+  friend auto operator<=>(block_header const&, block_header const&) = default;
 };
 
 [[nodiscard]] auto parse_block_header(std::span<std::byte const> raw)

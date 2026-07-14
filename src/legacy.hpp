@@ -43,14 +43,9 @@ inline constexpr auto convert_txin = [](bitcoin::tx_input const& in) {
   out.prevout = convert_outpoint(in.prevout());
   out.scriptSig = convert_script(in.script());
   out.nSequence = in.sequence();
-  // out.scriptWitness.stack = in.witness()
-  //   | std::views::transform(convert_witness)
-  //   | std::ranges::to<std::vector>();
-  auto witness = in.witness();
-  out.scriptWitness.stack.reserve(witness.size());
-  for (std::size_t i = 0; i < witness.size(); ++i) {
-    out.scriptWitness.stack.push_back(convert_witness(witness[i]));
-  }
+  out.scriptWitness.stack = in.witness()
+    | std::views::transform(convert_witness)
+    | std::ranges::to<std::vector>();
   return out;
 };
 

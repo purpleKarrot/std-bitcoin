@@ -2,8 +2,8 @@
 
 #pragma once
 
+#include <array>
 #include <cstddef>
-#include <memory>
 #include <optional>
 #include <span>
 #include <utility>
@@ -12,6 +12,8 @@
 #include <copy_on_write.hpp>
 
 #include <bitcoin/block_header.hpp>
+#include <bitcoin/hash_id.hpp>
+#include <bitcoin/serdes/byte_sink.hpp>
 #include <bitcoin/transaction.hpp>
 
 namespace bitcoin {
@@ -35,7 +37,7 @@ public:
   {
   }
 
-  [[nodiscard]] auto header() const noexcept -> block_header const&
+  [[nodiscard]] auto header() const -> block_header const&
   {
     return _impl->header;
   }
@@ -45,7 +47,7 @@ public:
     return _impl->transactions;
   }
 
-  friend bool operator==(block const& lhs, block const& rhs) noexcept = default;
+  friend bool operator==(block const& lhs, block const& rhs) = default;
   friend void detail::serialize(block const& b, detail::byte_sink_ref sink);
   friend auto serialized_size(block const& b) -> std::size_t;
 
@@ -55,8 +57,8 @@ private:
     block_header header;
     std::vector<transaction> transactions;
 
-    friend bool operator==(implementation const& lhs,
-                           implementation const& rhs) noexcept = default;
+    friend bool operator==(implementation const&,
+                           implementation const&) = default;
   };
 
   xyz::copy_on_write<implementation> _impl;
@@ -72,5 +74,11 @@ void serialize(block const& b, Sink& sink)
 }
 
 [[nodiscard]] auto serialized_size(block const& b) -> std::size_t;
+
+inline auto detail::block_hash_policy::operator()(block const& b) const
+  -> std::array<std::byte, 32>
+{
+  return operator()(b.header());
+}
 
 } // namespace bitcoin

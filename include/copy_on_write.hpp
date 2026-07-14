@@ -88,8 +88,7 @@ class copy_on_write
 public:
   using value_type = T;
   using allocator_type = Allocator;
-  using const_pointer =
-    typename std::allocator_traits<Allocator>::const_pointer;
+  using const_pointer = std::allocator_traits<Allocator>::const_pointer;
 
   //
   // Member functions
@@ -412,7 +411,7 @@ private:
     value_type value;
   };
 
-  using model_alloc_t = typename alloc_traits::template rebind_alloc<model>;
+  using model_alloc_t = alloc_traits::template rebind_alloc<model>;
 
   template <typename... Args>
   static auto _make_model(Allocator& a, Args&&... args)
