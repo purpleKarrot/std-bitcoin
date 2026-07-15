@@ -6,6 +6,7 @@ project(StdBitcoin)
 include(FetchContent)
 
 enable_testing()
+add_subdirectory(tests)
 
 # BitcoinCore build options are not properly prefixed
 set(BUILD_KERNEL_LIB ON)
@@ -69,32 +70,26 @@ target_include_directories(stdbtc PRIVATE
   )
 
 target_sources(stdbtc
-  PUBLIC FILE_SET HEADERS BASE_DIRS include FILES
-    include/bitcoin/serdes/byte_sink.hpp
-    include/bitcoin/amount.hpp
-    include/bitcoin/block.hpp
-    include/bitcoin/block_header.hpp
-    include/bitcoin/chain_view.hpp
-    include/bitcoin/coin.hpp
-    include/bitcoin/coin_index.hpp
-    include/bitcoin/consensus_parameters.hpp
-    include/bitcoin/hash_id.hpp
-    include/bitcoin/predicates.hpp
-    include/bitcoin/script.hpp
-    include/bitcoin/transaction.hpp
-    include/bitcoin/validation.hpp
-    include/bitcoin/validation_flags.hpp
-    include/bitcoin/validation_result.hpp
-    include/bitcoin/validation_status.hpp
-    include/bitcoin.hpp
+  PUBLIC FILE_SET CXX_MODULES BASE_DIRS module FILES
+    module/bitcoin.cpp
+    module/bitcoin.amount.cpp
+    module/bitcoin.coin.cpp
+    module/bitcoin.consensus_parameters.cpp
+    module/bitcoin.hash_id.cpp
+    module/bitcoin.predicates.cpp
+    module/bitcoin.script.cpp
+    module/bitcoin.serdes.cpp
+    module/bitcoin.validation.cpp
+    module/bitcoin.vocabulary.cpp
+    module/copy_on_write.cpp
+  PRIVATE FILE_SET legacy TYPE CXX_MODULES BASE_DIRS src FILES
+    src/legacy.cpp
   PRIVATE
-    src/block.cpp
-    src/block_header.cpp
     src/hash_id.cpp
     src/opcode.cpp
-    src/predicates.cpp
     src/script.cpp
-    src/transaction.cpp
+    src/serdes_decode.cpp
+    src/serdes_encode.cpp
     src/validation.cpp
     src/validation_flags.cpp
     src/validation_status.cpp
@@ -102,10 +97,12 @@ target_sources(stdbtc
 
 set_target_properties(stdbtc PROPERTIES
   CXX_CLANG_TIDY "clang-tidy"
-  CXX_INCLUDE_WHAT_YOU_USE "include-what-you-use"
   )
+
 set_source_files_properties(src/validation.cpp PROPERTIES
   SKIP_LINTING ON
   )
 
-add_subdirectory(tests)
+install(TARGETS stdbtc EXPORT stdbtc-targets
+  FILE_SET CXX_MODULES DESTINATION share/stdbtc/modules
+  )

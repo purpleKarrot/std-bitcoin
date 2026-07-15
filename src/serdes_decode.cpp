@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: BSL-1.0
 
-#pragma once
+module;
 
+#include <algorithm>
 #include <bit>
+#include <chrono>
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
@@ -12,12 +14,15 @@
 #include <type_traits>
 #include <vector>
 
-#include <bitcoin/transaction.hpp>
+#include <mp-units/framework.h>
 
-namespace bitcoin::serdes {
+module bitcoin;
 
-inline constexpr std::size_t MAX_SIZE = 4'000'000;
-inline constexpr std::size_t MAX_VECTOR_ALLOCATE = 1'000'000;
+namespace bitcoin {
+namespace {
+
+constexpr std::size_t MAX_SIZE = 4'000'000;
+constexpr std::size_t MAX_VECTOR_ALLOCATE = 1'000'000;
 
 template <std::integral T>
 constexpr T from_le(T v) noexcept
@@ -90,37 +95,37 @@ private:
   bool _failed = false;
 };
 
-inline constexpr auto decode_u8 = [](auto& r) -> std::uint8_t {
+constexpr auto decode_u8 = [](auto& r) -> std::uint8_t {
   auto v = std::uint8_t{};
   r.read(as_writable_bytes(std::span{&v, 1}));
   return v;
 };
 
-inline constexpr auto decode_u16 = [](auto& r) -> std::uint16_t {
+constexpr auto decode_u16 = [](auto& r) -> std::uint16_t {
   auto v = std::uint16_t{};
   r.read(as_writable_bytes(std::span{&v, 1}));
   return from_le(v);
 };
 
-inline constexpr auto decode_u32 = [](auto& r) -> std::uint32_t {
+constexpr auto decode_u32 = [](auto& r) -> std::uint32_t {
   auto v = std::uint32_t{};
   r.read(as_writable_bytes(std::span{&v, 1}));
   return from_le(v);
 };
 
-inline constexpr auto decode_u64 = [](auto& r) -> std::uint64_t {
+constexpr auto decode_u64 = [](auto& r) -> std::uint64_t {
   auto v = std::uint64_t{};
   r.read(as_writable_bytes(std::span{&v, 1}));
   return from_le(v);
 };
 
-inline constexpr auto decode_uint256 = [](auto& r) {
+constexpr auto decode_uint256 = [](auto& r) {
   auto h = std::array<std::byte, 32>{};
   r.read(as_writable_bytes(std::span{h}));
   return h;
 };
 
-inline constexpr auto decode_size = [](auto& r) -> std::size_t {
+constexpr auto decode_size = [](auto& r) -> std::size_t {
   auto tag = decode_u8(r);
   if (!r.good()) {
     return 0;
@@ -157,14 +162,14 @@ inline constexpr auto decode_size = [](auto& r) -> std::size_t {
   return x;
 };
 
-inline constexpr auto decode_bytes = [](auto& r) -> std::vector<std::byte> {
+constexpr auto decode_bytes = [](auto& r) -> std::vector<std::byte> {
   auto size = decode_size(r);
   auto buf = std::vector<std::byte>(size);
   r.read(buf);
   return buf;
 };
 
-inline constexpr auto decode_range = [](auto& r, auto decode_elem) {
+constexpr auto decode_range = [](auto& r, auto decode_elem) {
   using value_type = std::decay_t<decltype(decode_elem(r))>;
   constexpr auto batch_size = MAX_VECTOR_ALLOCATE / sizeof(value_type);
 
@@ -182,26 +187,26 @@ inline constexpr auto decode_range = [](auto& r, auto decode_elem) {
   return out;
 };
 
-inline constexpr auto decode_outpoint = [](auto& r) {
+constexpr auto decode_outpoint = [](auto& r) {
   auto hash = decode_uint256(r);
   auto index = decode_u32(r);
   return outpoint{txid{hash}, index};
 };
 
-inline constexpr auto decode_txin = [](auto& r) {
+constexpr auto decode_txin = [](auto& r) {
   auto prevout = decode_outpoint(r);
   auto script = bitcoin::script{decode_bytes(r)};
   auto sequence = decode_u32(r);
   return tx_input{prevout, std::move(script), sequence};
 };
 
-inline constexpr auto decode_txout = [](auto& r) {
+constexpr auto decode_txout = [](auto& r) {
   auto amount = decode_u64(r) * bitcoin::units::satoshi;
   auto script = bitcoin::script{decode_bytes(r)};
   return tx_output{amount, std::move(script)};
 };
 
-inline constexpr auto decode_witness = [](auto& r, std::vector<tx_input> in) {
+constexpr auto decode_witness = [](auto& r, std::vector<tx_input> in) {
   for (auto& elem : in) {
     auto witness = decode_range(r, decode_bytes);
     elem = tx_input{std::move(elem), std::move(witness)};
@@ -209,7 +214,7 @@ inline constexpr auto decode_witness = [](auto& r, std::vector<tx_input> in) {
   return in;
 };
 
-inline constexpr auto decode_tx = [](auto& r) -> transaction {
+constexpr auto decode_tx = [](auto& r) -> transaction {
   auto const version = decode_u32(r);
   auto inputs = decode_range(r, decode_txin);
   auto outputs = std::vector<tx_output>{};
@@ -240,7 +245,7 @@ inline constexpr auto decode_tx = [](auto& r) -> transaction {
   return transaction{version, std::move(inputs), std::move(outputs), locktime};
 };
 
-inline constexpr auto decode_block_header = [](auto& r) {
+constexpr auto decode_block_header = [](auto& r) {
   auto version = decode_u32(r);
   auto prev_block = decode_uint256(r);
   auto merkle_root = decode_uint256(r);
@@ -257,10 +262,44 @@ inline constexpr auto decode_block_header = [](auto& r) {
   };
 };
 
-inline constexpr auto decode_block = [](auto& r) {
+constexpr auto decode_block = [](auto& r) {
   auto header = decode_block_header(r);
   auto transactions = decode_range(r, decode_tx);
   return block{std::move(header), std::move(transactions)};
 };
 
-} // namespace bitcoin::serdes
+} // namespace
+
+auto parse_block(std::span<std::byte const> raw) -> std::optional<block>
+{
+  auto dec = decoder{span_source{raw}};
+  auto b = decode_block(dec);
+  if (!dec.good() || !dec.source().empty()) {
+    return std::nullopt;
+  }
+  return b;
+}
+
+auto parse_block_header(std::span<std::byte const> raw)
+  -> std::optional<block_header>
+{
+  auto dec = decoder{span_source{raw}};
+  auto header = decode_block_header(dec);
+  if (!dec.good() || !dec.source().empty()) {
+    return std::nullopt;
+  }
+  return header;
+}
+
+auto parse_transaction(std::span<std::byte const> raw)
+  -> std::optional<transaction>
+{
+  auto dec = decoder{span_source{raw}};
+  auto tx = decode_tx(dec);
+  if (!dec.good() || !dec.source().empty()) {
+    return std::nullopt;
+  }
+  return tx;
+}
+
+} // namespace bitcoin

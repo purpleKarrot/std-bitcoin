@@ -1,15 +1,18 @@
 // SPDX-License-Identifier: BSL-1.0
 
-#pragma once
+module;
 
+#include <array>
 #include <cstdint>
 #include <cstdlib>
 #include <limits>
 
-#include <bitcoin/amount.hpp>
-#include <bitcoin/hash_id.hpp>
+export module bitcoin:consensus_parameters;
 
-namespace bitcoin {
+import :amount;
+import :hash_id;
+
+export namespace bitcoin {
 
 struct consensus_parameters
 {

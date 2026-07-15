@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSL-1.0
 
-#include <bitcoin/chain_view.hpp>
+import bitcoin;
 
 #include <span>
 #include <vector>

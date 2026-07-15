@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSL-1.0
 
-#pragma once
+module;
 
 #include <atomic>
 #include <cassert>
@@ -12,7 +12,9 @@
 #include <type_traits>
 #include <utility>
 
-namespace xyz {
+export module copy_on_write;
+
+export namespace xyz {
 
 template <typename T, typename Allocator = std::allocator<T>>
 class copy_on_write;

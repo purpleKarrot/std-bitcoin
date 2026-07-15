@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: BSL-1.0
 
-#include <bitcoin/script.hpp>
+import bitcoin;
 
 #include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <format>
 #include <ranges>
 #include <type_traits>
 #include <utility>

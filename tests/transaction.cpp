@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSL-1.0
 
-#include <bitcoin/transaction.hpp>
+import bitcoin;
 
 #include <array>
 #include <cstdint>
@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <doctest/doctest.h>
+#include <mp-units/framework.h>
 
 #include "hex.hpp"
 

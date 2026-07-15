@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSL-1.0
 
-#pragma once
+module;
 
 #include <algorithm>
 #include <array>
@@ -9,8 +9,11 @@
 #include <format>
 #include <span>
 #include <string_view>
+#include <functional>
 
-namespace bitcoin {
+export module bitcoin:hash_id;
+
+export namespace bitcoin {
 
 class block;
 struct block_header;
@@ -91,7 +94,7 @@ using hash256 = detail::basic_hash_id<detail::hash256_policy>;
 
 } // namespace bitcoin
 
-template <class Tag>
+export template <class Tag>
 struct std::formatter<bitcoin::detail::basic_hash_id<Tag>, char>
 {
   constexpr auto parse(std::format_parse_context& ctx)
@@ -109,7 +112,7 @@ private:
   std::formatter<std::string_view, char> _formatter;
 };
 
-template <class Tag>
+export template <class Tag>
 struct std::hash<bitcoin::detail::basic_hash_id<Tag>>
 {
   [[nodiscard]] auto operator()(

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSL-1.0
 
-#pragma once
+module;
 
 #include <algorithm>
 #include <cassert>
@@ -15,7 +15,9 @@
 #include <string_view>
 #include <vector>
 
-namespace bitcoin {
+export module bitcoin:script;
+
+export namespace bitcoin {
 
 enum class opcode : std::uint8_t
 {
@@ -375,7 +377,7 @@ private:
 
 } // namespace bitcoin
 
-template <>
+export template <>
 struct std::formatter<bitcoin::opcode> : std::formatter<std::string_view>
 {
   auto format(bitcoin::opcode code, std::format_context& ctx) const

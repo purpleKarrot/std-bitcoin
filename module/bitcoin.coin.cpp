@@ -1,28 +1,25 @@
 // SPDX-License-Identifier: BSL-1.0
 
-#pragma once
+module;
 
-#include <cassert>
-#include <concepts>
 #include <cstddef>
-#include <ranges>
-#include <type_traits>
 #include <utility>
 
-#include <bitcoin/amount.hpp>
-#include <bitcoin/block.hpp>
-#include <bitcoin/script.hpp>
+export module bitcoin:coin;
 
-namespace bitcoin {
+import :amount;
+import :script;
+
+export namespace bitcoin {
 
 class coin
 {
 public:
   coin() = default;
-  constexpr coin(bitcoin::amount value, bitcoin::script_ref output_script,
+  constexpr coin(bitcoin::amount value, bitcoin::script output_script,
                  std::size_t funding_height, bool coinbase = false)
     : _value{value}
-    , _output_script{output_script}
+    , _output_script{std::move(output_script)}
     , _funding_height{funding_height}
     , _coinbase{coinbase}
   {

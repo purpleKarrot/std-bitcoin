@@ -1,12 +1,10 @@
 // SPDX-License-Identifier: BSL-1.0
 
+import bitcoin;
+
 #include <format>
 
 #include <doctest/doctest.h>
-
-#include <bitcoin/validation_flags.hpp>
-#include <bitcoin/validation_result.hpp>
-#include <bitcoin/validation_status.hpp>
 
 TEST_CASE("validation_flags string conversion")
 {

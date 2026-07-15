@@ -1,38 +1,21 @@
 // SPDX-License-Identifier: BSL-1.0
 
-#pragma once
+module;
 
-#include <algorithm>
-#include <array>
-#include <bit>
-#include <cstddef>
-#include <cstdint>
-#include <functional>
-#include <optional>
-#include <ranges>
-#include <span>
-#include <string_view>
-#include <utility>
 #include <vector>
+#include <chrono>
 
 #include <beman/any_view/any_view.hpp>
 #include <beman/any_view/any_view_options.hpp>
-#include <copy_on_write.hpp>
 
-#include <bitcoin/amount.hpp>
-#include <bitcoin/hash_id.hpp>
-#include <bitcoin/script.hpp>
-#include <bitcoin/serdes/byte_sink.hpp>
+export module bitcoin:vocabulary;
 
-namespace bitcoin {
+import :amount;
+import :hash_id;
+import :script;
+import copy_on_write;
 
-class transaction;
-
-namespace detail {
-
-void serialize(transaction const& tx, byte_sink_ref sink);
-
-} // namespace detail
+export namespace bitcoin {
 
 class outpoint
 {
@@ -148,10 +131,6 @@ public:
 
   friend bool operator==(transaction const&, transaction const&) = default;
 
-  friend void detail::serialize(transaction const& tx,
-                                detail::byte_sink_ref sink);
-  friend auto serialized_size(transaction const& tx) -> std::size_t;
-
 private:
   struct implementation
   {
@@ -182,27 +161,71 @@ private:
   xyz::copy_on_write<implementation> _impl;
 };
 
-auto parse_transaction(std::span<std::byte const> raw)
-  -> std::optional<transaction>;
-
-template <serdes::byte_sink Sink>
-void serialize(transaction const& tx, Sink& sink)
+struct block_header
 {
-  detail::serialize(tx, detail::byte_sink_ref{sink});
-}
+  std::uint32_t version;
+  bitcoin::block_hash prev_block_hash;
+  bitcoin::hash256 merkle_root;
+  std::chrono::sys_seconds time;
+  std::uint32_t bits;
+  std::uint32_t nonce;
 
-auto serialized_size(transaction const& tx) -> std::size_t;
+  friend bool operator==(block_header const&, block_header const&) = default;
+  friend auto operator<=>(block_header const&, block_header const&) = default;
+};
 
-inline auto detail::txid_policy::operator()(
-  bitcoin::transaction const& tx) const -> std::array<std::byte, 32>
+class block
+{
+public:
+  using transaction_view = std::span<transaction const>;
+
+  block() = default;
+  explicit block(block_header header, std::vector<transaction> transactions)
+    : _impl{std::in_place, header, std::move(transactions)}
+  {
+  }
+
+  [[nodiscard]] auto header() const -> block_header const&
+  {
+    return _impl->header;
+  }
+
+  [[nodiscard]] auto transactions() const -> transaction_view
+  {
+    return _impl->transactions;
+  }
+
+  friend bool operator==(block const& lhs, block const& rhs) = default;
+
+private:
+  struct implementation
+  {
+    block_header header;
+    std::vector<transaction> transactions;
+
+    friend bool operator==(implementation const&,
+                           implementation const&) = default;
+  };
+
+  xyz::copy_on_write<implementation> _impl;
+};
+
+inline auto detail::txid_policy::operator()(transaction const& tx) const
+  -> std::array<std::byte, 32>
 {
   return tx._impl->hash;
 }
 
-inline auto detail::wtxid_policy::operator()(
-  bitcoin::transaction const& tx) const -> std::array<std::byte, 32>
+inline auto detail::wtxid_policy::operator()(transaction const& tx) const
+  -> std::array<std::byte, 32>
 {
   return tx._impl->witness_hash;
+}
+
+inline auto detail::block_hash_policy::operator()(block const& b) const
+  -> std::array<std::byte, 32>
+{
+  return operator()(b.header());
 }
 
 } // namespace bitcoin

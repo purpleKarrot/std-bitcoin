@@ -1,11 +1,14 @@
 // SPDX-License-Identifier: BSL-1.0
 
-#pragma once
+module;
 
-#include <mp-units/ext/format.h>
+#include <cstdint>
+
 #include <mp-units/framework.h>
 
-namespace bitcoin {
+export module bitcoin:amount;
+
+export namespace bitcoin {
 namespace detail {
 
 inline constexpr struct amount_dimension final

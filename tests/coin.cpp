@@ -1,18 +1,15 @@
 // SPDX-License-Identifier: BSL-1.0
 
-#include <bitcoin/coin.hpp>
+import bitcoin;
 
 #include <array>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
-#include <ranges>
-#include <type_traits>
 #include <unordered_map>
 
 #include <doctest/doctest.h>
-
-#include <bitcoin/coin_index.hpp>
+#include <mp-units/framework.h>
 
 namespace {
 
@@ -110,47 +107,4 @@ TEST_CASE("coin equality compares all stored fields")
   CHECK(a == b);
   CHECK_FALSE(a == different_height);
   CHECK_FALSE(a == different_coinbase);
-}
-
-TEST_CASE("coin_index_ref forwards lookups to the wrapped index")
-{
-  auto const bytes = std::array{byte(0xac)};
-  auto const script = bitcoin::script{std::span{bytes}};
-  auto const prevout = bitcoin::outpoint{bitcoin::txid{}, 3};
-  auto const expected = bitcoin::coin{5 * satoshi, script, 12};
-
-  auto index = map_coin_index{};
-  index.coins.emplace(prevout, expected);
-
-  auto const ref = bitcoin::detail::coin_index_ref{index};
-
-  auto const found = ref.lookup(prevout);
-  REQUIRE(found.has_value());
-  CHECK(*found == expected);
-  CHECK(index.lookup_calls == 1);
-
-  auto const missing = ref.lookup(bitcoin::outpoint{bitcoin::txid{}, 4});
-  CHECK_FALSE(missing.has_value());
-  CHECK(index.lookup_calls == 2);
-}
-
-TEST_CASE("coin_index_ref observes updates to the wrapped index")
-{
-  auto const updated_bytes = std::array{byte(0x52)};
-  auto const prevout = bitcoin::outpoint{bitcoin::txid{}, 9};
-
-  auto index = map_coin_index{};
-  auto ref = bitcoin::detail::coin_index_ref{index};
-
-  auto const updated_script = bitcoin::script{std::span{updated_bytes}};
-  index.coins.insert_or_assign(
-    prevout, bitcoin::coin{7 * satoshi, updated_script, 88, true});
-
-  auto const found = ref.lookup(prevout);
-  REQUIRE(found.has_value());
-  CHECK(found->value() == 7 * satoshi);
-  CHECK(found->funding_height() == 88);
-  CHECK(is_coinbase(*found));
-  CHECK(std::ranges::equal(as_bytes(found->output_script()),
-                           std::span{updated_bytes}));
 }

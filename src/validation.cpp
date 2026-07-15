@@ -1,18 +1,21 @@
 // SPDX-License-Identifier: BSL-1.0
 
-#include <bitcoin/validation.hpp>
+module;
+
+#include "consensus/validation.h"
 
 #include <stdexcept>
 
 #include "consensus/tx_check.h"
-#include "consensus/validation.h"
-#include "legacy.hpp"
 #include "pow.h"
 #include "primitives/block.h"
 #include "primitives/transaction.h"
 #include "script/interpreter.h"
 #include "script/verify_flags.h"
 #include "validation.h"
+
+module bitcoin;
+import legacy;
 
 namespace {
 

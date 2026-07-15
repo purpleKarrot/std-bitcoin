@@ -2,10 +2,12 @@
 Checks: >-
   -*,
   bugprone-*,
+  -bugprone-implicit-widening-of-multiplication-result,
   -bugprone-std-namespace-modification,
   misc-*,
   -misc-include-cleaner,
   -misc-non-private-member-variables-in-classes,
+  -misc-use-internal-linkage,
   modernize-*,
   -modernize-use-trailing-return-type,
   performance-*,
@@ -14,6 +16,7 @@ Checks: >-
   -readability-identifier-length,
   -readability-magic-numbers,
   -readability-named-parameter,
+  -readability-redundant-declaration,
   -readability-uppercase-literal-suffix,
 HeaderFilterRegex: '.*\.hpp$'
 UseColor: true

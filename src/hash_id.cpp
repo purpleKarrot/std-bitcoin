@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSL-1.0
 
-#include <bitcoin/hash_id.hpp>
+module;
 
 #include <array>
 #include <cstddef>
@@ -8,6 +8,8 @@
 #include <ranges>
 #include <span>
 #include <string_view>
+
+module bitcoin;
 
 namespace bitcoin::detail {
 

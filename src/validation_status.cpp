@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: BSL-1.0
 
-#include <bitcoin/validation_status.hpp>
+module;
 
 #include <algorithm>
+#include <format>
 #include <string_view>
+
+module bitcoin;
 
 auto std::formatter<bitcoin::validation_status>::format(
   bitcoin::validation_status status, std::format_context& ctx) const

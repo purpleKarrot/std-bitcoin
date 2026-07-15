@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: BSL-1.0
 
-#include <bitcoin/validation.hpp>
+import bitcoin;
 
 #include <array>
 #include <cstddef>
 #include <span>
 
 #include <doctest/doctest.h>
+#include <mp-units/framework.h>
 
 #include "hex.hpp"
 
