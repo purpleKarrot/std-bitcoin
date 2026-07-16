@@ -2,13 +2,9 @@
 
 module;
 
-#include "consensus/validation.h"
-
 #include <stdexcept>
 
 #include "consensus/tx_check.h"
-#include "pow.h"
-#include "primitives/block.h"
 #include "primitives/transaction.h"
 #include "script/interpreter.h"
 #include "script/verify_flags.h"
@@ -46,46 +42,6 @@ bool is_valid_flag_combination(script_verify_flags flags)
 } // namespace
 
 namespace bitcoin {
-
-validation_status verifier::verify(block_header const& header) const
-{
-  auto const hash = legacy::convert_uint256(block_hash{header});
-  auto const params = legacy::convert_consensus(*_params);
-  bool const result = CheckProofOfWork(hash, header.bits, params);
-  return result ? 0 : -1; // BlockValidationResult::BLOCK_INVALID_HEADER
-}
-
-// validation_status verify(block_header const& header, any_chain_view chain,
-//                            std::chrono::sys_seconds now)
-// {
-// }
-
-validation_status verifier::verify(bitcoin::block const& b) const
-{
-  auto const block = legacy::convert_block(b);
-  auto const params = legacy::convert_consensus(*_params);
-  auto state = BlockValidationState{};
-  bool const result = CheckBlock(block, state, params);
-  return result ? 0 : -1; // state.GetResult();
-}
-
-// validation_status verify(bitcoin::block const& block, any_chain_view chain,
-//                            std::chrono::sys_seconds now)
-// {
-// }
-
-validation_status verifier::verify(bitcoin::transaction const& tx) const
-{
-  auto const txn = legacy::convert_tx(tx);
-  auto state = TxValidationState{};
-  bool const ok = CheckTransaction(txn, state);
-  return ok ? 0 : -1; // state.GetResult();
-}
-
-// validation_status verify(
-//   bitcoin::transaction const& tx, any_chain_view chain)
-// {
-// }
 
 validation_status verifier::verify(script_ref script, amount value,
                                    transaction const& tx_to,

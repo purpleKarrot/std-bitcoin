@@ -377,7 +377,7 @@ private:
 
 } // namespace bitcoin
 
-export template <>
+template <>
 struct std::formatter<bitcoin::opcode> : std::formatter<std::string_view>
 {
   auto format(bitcoin::opcode code, std::format_context& ctx) const

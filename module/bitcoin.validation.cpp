@@ -21,9 +21,9 @@ export namespace bitcoin {
 
 template <typename T>
 concept chain_view = std::ranges::view<T>
-  && std::ranges::sized_range<T const>
-  && std::ranges::random_access_range<T const>
-  && std::convertible_to<std::ranges::range_reference_t<T const>, block_header>;
+  && std::ranges::sized_range<T>
+  && std::ranges::random_access_range<T>
+  && std::convertible_to<std::ranges::range_reference_t<T>, block_header>;
 
 template <typename T>
 concept coin_index = requires(T const& m, outpoint p) {
@@ -232,7 +232,8 @@ public:
 
 private:
   static constexpr auto sized_random_access =
-    beman::any_view::any_view_options::sized
+    beman::any_view::any_view_options::copyable
+    | beman::any_view::any_view_options::sized
     | beman::any_view::any_view_options::random_access;
 
   template <typename T>

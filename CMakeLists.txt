@@ -82,7 +82,7 @@ target_sources(stdbtc
     module/bitcoin.validation.cpp
     module/bitcoin.vocabulary.cpp
     module/copy_on_write.cpp
-  PRIVATE FILE_SET legacy TYPE CXX_MODULES BASE_DIRS src FILES
+  PRIVATE FILE_SET internal TYPE CXX_MODULES BASE_DIRS src FILES
     src/legacy.cpp
   PRIVATE
     src/hash_id.cpp
@@ -90,7 +90,10 @@ target_sources(stdbtc
     src/script.cpp
     src/serdes_decode.cpp
     src/serdes_encode.cpp
-    src/validation.cpp
+    src/validate_block.cpp
+    src/validate_header.cpp
+    src/validate_script.cpp
+    src/validate_transaction.cpp
     src/validation_flags.cpp
     src/validation_status.cpp
   )
@@ -99,8 +102,12 @@ set_target_properties(stdbtc PROPERTIES
   CXX_CLANG_TIDY "clang-tidy"
   )
 
-set_source_files_properties(src/validation.cpp PROPERTIES
-  SKIP_LINTING ON
+set_source_files_properties(
+    src/validate_block.cpp
+    src/validate_header.cpp
+    src/validate_script.cpp
+    src/validate_transaction.cpp
+  PROPERTIES SKIP_LINTING ON
   )
 
 install(TARGETS stdbtc EXPORT stdbtc-targets

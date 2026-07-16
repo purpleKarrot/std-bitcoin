@@ -84,7 +84,7 @@ constexpr auto convert_header = [](bitcoin::block_header const& in) {
 
 constexpr auto convert_block = [](bitcoin::block const& in) {
   constexpr auto make_ref = [](CTransaction tx) {
-    return MakeTransactionRef(std::move(tx));
+    return std::make_shared<CTransaction const>(std::move(tx));
   };
   auto out = CBlock{convert_header(in.header())};
   out.vtx = in.transactions()

@@ -7,9 +7,9 @@ module;
 #include <concepts>
 #include <cstddef>
 #include <format>
+#include <functional>
 #include <span>
 #include <string_view>
-#include <functional>
 
 export module bitcoin:hash_id;
 

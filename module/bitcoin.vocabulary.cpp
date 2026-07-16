@@ -2,8 +2,8 @@
 
 module;
 
-#include <vector>
 #include <chrono>
+#include <vector>
 
 #include <beman/any_view/any_view.hpp>
 #include <beman/any_view/any_view_options.hpp>

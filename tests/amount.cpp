@@ -2,6 +2,10 @@
 
 import bitcoin;
 
+#include <compare>
+#include <format>
+#include <type_traits>
+
 #include <doctest/doctest.h>
 #include <mp-units/framework.h>
 
