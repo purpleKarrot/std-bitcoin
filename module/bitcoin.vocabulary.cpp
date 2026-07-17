@@ -3,6 +3,8 @@
 module;
 
 #include <chrono>
+#include <format>
+#include <string_view>
 #include <vector>
 
 #include <beman/any_view/any_view.hpp>
@@ -241,4 +243,39 @@ struct std::hash<bitcoin::outpoint>
     constexpr auto mix = 0x9e3779b97f4a7c15ULL;
     return txid ^ (index + mix + (txid << 6U) + (txid >> 2U));
   }
+};
+
+template <>
+struct std::formatter<bitcoin::outpoint> : std::formatter<std::string_view>
+{
+  auto format(bitcoin::outpoint const& obj, std::format_context& ctx) const
+    -> std::format_context::iterator;
+};
+
+template <>
+struct std::formatter<bitcoin::tx_input> : std::formatter<std::string_view>
+{
+  auto format(bitcoin::tx_input const& obj, std::format_context& ctx) const
+    -> std::format_context::iterator;
+};
+
+template <>
+struct std::formatter<bitcoin::tx_output> : std::formatter<std::string_view>
+{
+  auto format(bitcoin::tx_output const& obj, std::format_context& ctx) const
+    -> std::format_context::iterator;
+};
+
+template <>
+struct std::formatter<bitcoin::transaction> : std::formatter<std::string_view>
+{
+  auto format(bitcoin::transaction const& obj, std::format_context& ctx) const
+    -> std::format_context::iterator;
+};
+
+template <>
+struct std::formatter<bitcoin::block> : std::formatter<std::string_view>
+{
+  auto format(bitcoin::block const& obj, std::format_context& ctx) const
+    -> std::format_context::iterator;
 };

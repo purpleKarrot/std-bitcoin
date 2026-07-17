@@ -45,6 +45,21 @@ constexpr auto legacy_tx =
   "00"
   "00000000"_hex;
 
+constexpr auto string_representation = std::string_view{
+  "CBlock("
+  "hash=14508459b221041eab257d2baaa7459775ba748246c8403609eb708f0e57e74b, "
+  "ver=0x00000000, "
+  "hashPrevBlock="
+  "0000000000000000000000000000000000000000000000000000000000000000, "
+  "hashMerkleRoot="
+  "0000000000000000000000000000000000000000000000000000000000000000, nTime=0, "
+  "nBits=00000000, nNonce=0, vtx=1)\n"
+  "  CTransaction(hash=2fb7d2ab4e, ver=1, vin.size=1, vout.size=1, "
+  "nLockTime=0)\n"
+  "    CTxIn(COutPoint(0000000000, 4294967295), coinbase )\n"
+  "    CScriptWitness()\n"
+  "    CTxOut(nValue=0.00000000, scriptPubKey=)\n\n"};
+
 } // namespace
 
 TEST_CASE("block header parses and round-trips")
@@ -91,4 +106,6 @@ TEST_CASE("block parses and round-trips")
   auto sink = vector_sink{};
   bitcoin::serialize(*block, sink);
   CHECK(sink.bytes == raw);
+
+  CHECK(std::format("{}", *block) == string_representation);
 }

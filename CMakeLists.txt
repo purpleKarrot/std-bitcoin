@@ -96,6 +96,7 @@ target_sources(stdbtc
     src/validate_transaction.cpp
     src/validation_flags.cpp
     src/validation_status.cpp
+    src/vocabulary_format.cpp
   )
 
 set_target_properties(stdbtc PROPERTIES
