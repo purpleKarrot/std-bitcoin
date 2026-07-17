@@ -101,7 +101,7 @@ enum class validation_flags : std::uint_least32_t
 
 } // namespace bitcoin
 
-namespace bitcoin::detail {
+namespace bitcoin {
 
 class coin_index_ref
 {
@@ -130,11 +130,7 @@ private:
 
 static_assert(coin_index<coin_index_ref>);
 
-} // namespace bitcoin::detail
-
-export namespace bitcoin {
-
-class verifier
+export class verifier
 {
 public:
   constexpr explicit verifier(consensus_parameters const& params) noexcept
@@ -289,14 +285,12 @@ private:
   consensus_parameters const* _params;
 };
 
-inline constexpr auto verify = verifier{mainnet::params};
+export constexpr auto verify = verifier{mainnet::params};
 
 } // namespace bitcoin
 
-namespace std {
-
-template <>
-struct formatter<bitcoin::validation_flags>
+export template <>
+struct std::formatter<bitcoin::validation_flags>
 {
   constexpr auto parse(format_parse_context& ctx)
   {
@@ -311,8 +305,8 @@ struct formatter<bitcoin::validation_flags>
     -> format_context::iterator;
 };
 
-template <>
-struct formatter<bitcoin::validation_status>
+export template <>
+struct std::formatter<bitcoin::validation_status>
 {
   constexpr auto parse(format_parse_context& ctx)
   {
@@ -326,5 +320,3 @@ struct formatter<bitcoin::validation_status>
   auto format(bitcoin::validation_status status, format_context& ctx) const
     -> format_context::iterator;
 };
-
-} // namespace std

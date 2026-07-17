@@ -154,8 +154,8 @@ private:
     }
   };
 
-  friend struct detail::txid_policy;
-  friend struct detail::wtxid_policy;
+  friend struct txid_policy;
+  friend struct wtxid_policy;
   friend bool is_segwit(transaction const& t);
 
   xyz::copy_on_write<implementation> _impl;
@@ -210,19 +210,19 @@ private:
   xyz::copy_on_write<implementation> _impl;
 };
 
-inline auto detail::txid_policy::operator()(transaction const& tx) const
+inline auto txid_policy::operator()(transaction const& tx)
   -> std::array<std::byte, 32>
 {
   return tx._impl->hash;
 }
 
-inline auto detail::wtxid_policy::operator()(transaction const& tx) const
+inline auto wtxid_policy::operator()(transaction const& tx)
   -> std::array<std::byte, 32>
 {
   return tx._impl->witness_hash;
 }
 
-inline auto detail::block_hash_policy::operator()(block const& b) const
+inline auto block_hash_policy::operator()(block const& b)
   -> std::array<std::byte, 32>
 {
   return operator()(b.header());

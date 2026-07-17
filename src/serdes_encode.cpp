@@ -44,9 +44,10 @@ constexpr auto encode_u64 = [](auto& w, std::uint64_t v) {
   w.write(as_bytes(std::span{&v, 1}));
 };
 
-constexpr auto encode_hash256 = []<class P>(auto& w,
-                                            detail::basic_hash_id<P> const& v) {
-  w.write(as_bytes(v));
+constexpr auto encode_hash256 = [](auto& w, auto const& v) {
+  auto const bytes = as_bytes(v);
+  static_assert(bytes.size() == 32);
+  w.write(bytes);
 };
 
 constexpr auto encode_size = [](auto& w, std::size_t v) {
@@ -233,19 +234,19 @@ transaction::implementation::implementation(std::uint32_t version_,
 {
 }
 
-void detail::serialize(block const& b, byte_sink_ref sink)
+void serdes::serialize(block const& b, byte_sink_ref sink)
 {
   auto buf = buffered_sink<byte_sink_ref>{sink};
   encode_block(buf, b);
 }
 
-void detail::serialize(block_header const& header, byte_sink_ref sink)
+void serdes::serialize(block_header const& header, byte_sink_ref sink)
 {
   auto buf = buffered_sink<byte_sink_ref, 80>{sink};
   encode_block_header(buf, header);
 }
 
-void detail::serialize(transaction const& tx, byte_sink_ref sink)
+void serdes::serialize(transaction const& tx, byte_sink_ref sink)
 {
   auto buf = buffered_sink<byte_sink_ref>{sink};
   encode_tx(buf, tx);
@@ -270,7 +271,7 @@ auto serialized_size(transaction const& tx) -> std::size_t
   return sink.size();
 }
 
-auto detail::block_hash_policy::operator()(block_header const& hdr) const
+auto block_hash_policy::operator()(block_header const& hdr)
   -> std::array<std::byte, 32>
 {
   auto hasher = HashWriter{};

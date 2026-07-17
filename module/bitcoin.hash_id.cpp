@@ -13,28 +13,26 @@ module;
 
 export module bitcoin:hash_id;
 
-export namespace bitcoin {
+namespace bitcoin {
 
-class block;
-struct block_header;
-class transaction;
-
-namespace detail {
+export class block;
+export struct block_header;
+export class transaction;
 
 struct block_hash_policy
 {
-  auto operator()(block const& b) const -> std::array<std::byte, 32>;
-  auto operator()(block_header const& hdr) const -> std::array<std::byte, 32>;
+  static auto operator()(block const& b) -> std::array<std::byte, 32>;
+  static auto operator()(block_header const& hdr) -> std::array<std::byte, 32>;
 };
 
 struct txid_policy
 {
-  auto operator()(transaction const& tx) const -> std::array<std::byte, 32>;
+  static auto operator()(transaction const& tx) -> std::array<std::byte, 32>;
 };
 
 struct wtxid_policy
 {
-  auto operator()(transaction const& tx) const -> std::array<std::byte, 32>;
+  static auto operator()(transaction const& tx) -> std::array<std::byte, 32>;
 };
 
 struct hash256_policy
@@ -85,27 +83,25 @@ auto format_hash_id(std::span<std::byte const, 32> bytes,
                     std::formatter<std::string_view, char> const& formatter,
                     std::format_context& ctx) -> std::format_context::iterator;
 
-} // namespace detail
-
-using block_hash = detail::basic_hash_id<detail::block_hash_policy>;
-using txid = detail::basic_hash_id<detail::txid_policy>;
-using wtxid = detail::basic_hash_id<detail::wtxid_policy>;
-using hash256 = detail::basic_hash_id<detail::hash256_policy>;
+export using block_hash = basic_hash_id<block_hash_policy>;
+export using txid = basic_hash_id<txid_policy>;
+export using wtxid = basic_hash_id<wtxid_policy>;
+export using hash256 = basic_hash_id<hash256_policy>;
 
 } // namespace bitcoin
 
 export template <class Tag>
-struct std::formatter<bitcoin::detail::basic_hash_id<Tag>, char>
+struct std::formatter<bitcoin::basic_hash_id<Tag>, char>
 {
   constexpr auto parse(std::format_parse_context& ctx)
   {
     return _formatter.parse(ctx);
   }
 
-  auto format(bitcoin::detail::basic_hash_id<Tag> const& hash,
+  auto format(bitcoin::basic_hash_id<Tag> const& hash,
               std::format_context& ctx) const
   {
-    return bitcoin::detail::format_hash_id(as_bytes(hash), _formatter, ctx);
+    return bitcoin::format_hash_id(as_bytes(hash), _formatter, ctx);
   }
 
 private:
@@ -113,10 +109,10 @@ private:
 };
 
 export template <class Tag>
-struct std::hash<bitcoin::detail::basic_hash_id<Tag>>
+struct std::hash<bitcoin::basic_hash_id<Tag>>
 {
   [[nodiscard]] auto operator()(
-    bitcoin::detail::basic_hash_id<Tag> const& hash) const noexcept
+    bitcoin::basic_hash_id<Tag> const& hash) const noexcept
   {
     auto const bytes = as_bytes(hash);
     auto const* data = reinterpret_cast<char const*>(bytes.data());

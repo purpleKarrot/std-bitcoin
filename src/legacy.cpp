@@ -14,10 +14,10 @@ import bitcoin;
 
 export namespace legacy {
 
-template <class P>
-auto convert_uint256(bitcoin::detail::basic_hash_id<P> const& in)
+auto convert_uint256(auto const& in)
 {
   auto const bytes = as_bytes(in);
+  static_assert(bytes.size() == 32);
   auto const* data = reinterpret_cast<uint8_t const*>(bytes.data());
   return uint256{std::span{data, 32}};
 }
