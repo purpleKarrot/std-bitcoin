@@ -23,30 +23,27 @@ consteval unsigned hex_value(char c)
 }
 
 template <std::size_t N>
-consteval auto hex_decode(char const (&str)[N])
+struct hex_data
 {
   static_assert((N - 1) % 2 == 0, "hex string must have even length");
+  std::array<std::byte, (N - 1) / 2> bytes{};
 
-  constexpr std::size_t out_size = (N - 1) / 2;
-
-  auto out = std::array<std::byte, out_size>{};
-
-  for (std::size_t i = 0; i < out_size; ++i) {
-    auto hi = hex_value(str[i * 2]);
-    auto lo = hex_value(str[i * 2 + 1]);
-    out[i] = std::byte((hi << 4) | lo);
+  constexpr hex_data(char const (&str)[N]) // NOLINT
+  {
+    for (std::size_t i = 0; i < bytes.size(); ++i) {
+      auto hi = hex_value(str[i * 2]);
+      auto lo = hex_value(str[(i * 2) + 1]);
+      bytes[i] = std::byte((hi << 4) | lo);
+    }
   }
-
-  return out;
-}
+};
 
 } // namespace detail
 
-template <typename CharT, CharT... Cs>
+template <detail::hex_data S>
 consteval auto operator""_hex()
 {
-  constexpr char str[] = {Cs..., '\0'};
-  return detail::hex_decode(str);
+  return S.bytes;
 }
 
 } // namespace hex_literal

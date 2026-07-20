@@ -2,6 +2,7 @@
 
 module;
 
+#include <ranges>
 #include <stdexcept>
 
 #include "consensus/tx_check.h"
@@ -49,6 +50,8 @@ validation_status verifier::verify(script_ref script, amount value,
                                    validation_flags flags,
                                    any_prevouts_view prevouts) const
 {
+  assert(input_index < tx_to.inputs().size());
+
   // Assert that all specified flags are part of the interface before continuing
   assert(!is_set(flags, ~validation_flags::all));
 
@@ -57,25 +60,19 @@ validation_status verifier::verify(script_ref script, amount value,
     throw std::invalid_argument("Invalid flag combination");
   }
 
-  if (is_set(flags, validation_flags::taproot) && prevouts.empty()) {
+  if (is_set(flags, validation_flags::taproot)
+      && (prevouts.size() != tx_to.inputs().size())) {
     throw std::invalid_argument("Spent outputs required for taproot");
   }
 
-  CTransaction const& tx = legacy::convert_tx(tx_to);
-  std::vector<CTxOut> spent_outputs;
-  if (!prevouts.empty()) {
-    assert(prevouts.size() == tx.vin.size());
-    spent_outputs.reserve(prevouts.size());
-    for (auto const& elem : prevouts) {
-      spent_outputs.push_back(legacy::convert_txout(elem));
-    }
-  }
-
-  assert(input_index < tx.vin.size());
-  PrecomputedTransactionData txdata{tx};
-
-  if (!spent_outputs.empty() && is_set(flags, validation_flags::taproot)) {
-    txdata.Init(tx, std::move(spent_outputs));
+  auto const tx = legacy::convert_tx(tx_to);
+  auto txdata = PrecomputedTransactionData{tx};
+  if (is_set(flags, validation_flags::taproot)) {
+    // clang-format off
+    txdata.Init(tx, prevouts
+      | std::views::transform(legacy::convert_txout)
+      | std::ranges::to<std::vector>());
+    // clang-format on
   }
 
   auto const checker = TransactionSignatureChecker(
