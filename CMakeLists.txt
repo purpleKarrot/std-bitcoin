@@ -28,8 +28,8 @@ set(ENABLE_IPC OFF)
 set(ENABLE_WALLET OFF)
 
 FetchContent_Declare(BitcoinCore EXCLUDE_FROM_ALL
-  GIT_REPOSITORY https://github.com/bitcoin/bitcoin.git
-  GIT_TAG 0bc9d354dfd8074d1c36a891a69b6585a8775c65
+  GIT_REPOSITORY https://github.com/purpleKarrot/bitcoin.git
+  GIT_TAG 36b4638e4c18032d00061304822cbb7f56d7167a
   )
 
 FetchContent_Declare(beman.any_view SYSTEM EXCLUDE_FROM_ALL
