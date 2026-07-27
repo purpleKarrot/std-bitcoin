@@ -173,7 +173,7 @@ constexpr auto decode_range = [](auto& r, auto decode_elem) {
   using value_type = std::decay_t<decltype(decode_elem(r))>;
   constexpr auto batch_size = MAX_VECTOR_ALLOCATE / sizeof(value_type);
 
-  auto const size = decode_size(r);
+  auto size = decode_size(r);
   auto out = std::vector<value_type>{};
   out.reserve(std::min(size, batch_size));
 
@@ -215,7 +215,7 @@ constexpr auto decode_witness = [](auto& r, std::vector<tx_input> in) {
 };
 
 constexpr auto decode_tx = [](auto& r) -> transaction {
-  auto const version = decode_u32(r);
+  auto version = decode_u32(r);
   auto inputs = decode_range(r, decode_txin);
   auto outputs = std::vector<tx_output>{};
 
@@ -223,7 +223,7 @@ constexpr auto decode_tx = [](auto& r) -> transaction {
     outputs = decode_range(r, decode_txout);
   }
   else {
-    auto const flags = decode_u8(r);
+    auto flags = decode_u8(r);
     if (flags == 1) {
       inputs = decode_range(r, decode_txin);
       outputs = decode_range(r, decode_txout);
@@ -233,7 +233,7 @@ constexpr auto decode_tx = [](auto& r) -> transaction {
       return {};
     }
     inputs = decode_witness(r, std::move(inputs));
-    auto const has_witness = std::ranges::any_of(
+    auto has_witness = std::ranges::any_of(
       inputs, [](tx_input const& elem) { return !elem.witness().empty(); });
     if (!has_witness) {
       r.fail();
@@ -241,7 +241,7 @@ constexpr auto decode_tx = [](auto& r) -> transaction {
     }
   }
 
-  auto const locktime = decode_u32(r);
+  auto locktime = decode_u32(r);
   return transaction{version, std::move(inputs), std::move(outputs), locktime};
 };
 

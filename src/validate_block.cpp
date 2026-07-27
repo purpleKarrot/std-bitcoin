@@ -18,8 +18,8 @@ validation_status verifier::verify(bitcoin::block const& b) const
   }
 
   auto state = BlockValidationState{};
-  bool const result = CheckBlock(legacy::convert_block(b), state,
-                                 legacy::convert_consensus(*_params));
+  auto result = CheckBlock(legacy::convert_block(b), state,
+                           legacy::convert_consensus(*_params));
   return result ? 0 : -1; // state.GetResult();
 }
 
@@ -32,7 +32,7 @@ validation_status verifier::verify(bitcoin::block const& b,
   }
 
   auto state = BlockValidationState{};
-  bool const result = ContextualCheckBlock(
+  auto result = ContextualCheckBlock(
     legacy::convert_block(b), state, legacy::convert_consensus(*_params),
     AnyChainView{chain | std::views::transform(legacy::convert_header)});
   return result ? 0 : -1; // state.GetResult();

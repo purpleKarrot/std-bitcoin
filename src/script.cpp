@@ -63,10 +63,10 @@ struct parsed_instruction
     return {};
   }
 
-  auto const raw_opcode = to_u8(bytes.front());
+  auto raw_opcode = to_u8(bytes.front());
 
   if (raw_opcode < to_u8(opcode::op_pushdata1)) {
-    auto const payload_size = static_cast<std::size_t>(raw_opcode);
+    auto payload_size = static_cast<std::size_t>(raw_opcode);
     if (bytes.size() < 1 + payload_size) {
       return {};
     }
@@ -84,7 +84,7 @@ struct parsed_instruction
       return {};
     }
 
-    auto const payload_size = static_cast<std::size_t>(to_u8(bytes[1]));
+    auto payload_size = static_cast<std::size_t>(to_u8(bytes[1]));
     if (bytes.size() < 2 + payload_size) {
       return {};
     }
@@ -102,7 +102,7 @@ struct parsed_instruction
       return {};
     }
 
-    auto const payload_size =
+    auto payload_size =
       static_cast<std::size_t>(read_le16(bytes.subspan<1, 2>()));
     if (bytes.size() < 3 + payload_size) {
       return {};
@@ -121,7 +121,7 @@ struct parsed_instruction
       return {};
     }
 
-    auto const payload_size =
+    auto payload_size =
       static_cast<std::size_t>(read_le32(bytes.subspan<1, 4>()));
     if (bytes.size() < 5 + payload_size) {
       return {};
@@ -150,7 +150,7 @@ struct parsed_instruction
   }
 
   auto result = std::vector<std::byte>{};
-  auto const negative = value < 0;
+  auto negative = value < 0;
   auto abs_value = negative ? (~static_cast<std::uint64_t>(value) + 1)
                             : static_cast<std::uint64_t>(value);
 
@@ -163,7 +163,7 @@ struct parsed_instruction
     result.push_back(negative ? std::byte{0x80} : std::byte{0x00});
   }
   else if (negative) {
-    auto const high = static_cast<std::uint8_t>(to_u8(result.back()) | 0x80u);
+    auto high = static_cast<std::uint8_t>(to_u8(result.back()) | 0x80u);
     result.back() = std::byte{high};
   }
 
@@ -215,7 +215,7 @@ void instruction_view::iterator::_read_next() noexcept
     return;
   }
 
-  auto const parsed = parse_instruction(_remaining);
+  auto parsed = parse_instruction(_remaining);
   if (!parsed.valid) {
     _current = {};
     _current_size = 0;
@@ -271,7 +271,7 @@ auto script::append_number(std::int64_t value) -> script&
     return append(encode_small_integer(static_cast<int>(value)));
   }
 
-  auto const bytes = serialize_script_number(value);
+  auto bytes = serialize_script_number(value);
   return append_data(bytes);
 }
 
@@ -315,7 +315,7 @@ void script::_append_bytes(std::span<std::byte const> bytes)
 
 auto is_small_integer(opcode code) noexcept -> bool
 {
-  auto const raw = to_u8(code);
+  auto raw = to_u8(code);
   return (code == opcode::op_0)
     || (raw >= to_u8(opcode::op_1) && raw <= to_u8(opcode::op_16));
 }
@@ -348,7 +348,7 @@ auto is_well_formed(script_ref value) noexcept -> bool
   auto remaining = as_bytes(value);
 
   while (!remaining.empty()) {
-    auto const parsed = parse_instruction(remaining);
+    auto parsed = parse_instruction(remaining);
     if (!parsed.valid) {
       return false;
     }
@@ -364,7 +364,7 @@ auto has_valid_opcodes(script_ref value) noexcept -> bool
   auto remaining = as_bytes(value);
 
   while (!remaining.empty()) {
-    auto const parsed = parse_instruction(remaining);
+    auto parsed = parse_instruction(remaining);
     if (!parsed.valid
         || !is_defined_opcode(parsed.value.code())
         || (parsed.value.immediate().size() > script_element_size_limit)) {
@@ -382,7 +382,7 @@ auto is_push_only(script_ref value) noexcept -> bool
   auto remaining = as_bytes(value);
 
   while (!remaining.empty()) {
-    auto const parsed = parse_instruction(remaining);
+    auto parsed = parse_instruction(remaining);
     if (!parsed.valid) {
       return false;
     }
@@ -399,7 +399,7 @@ auto is_push_only(script_ref value) noexcept -> bool
 
 auto is_unspendable(script_ref value) noexcept -> bool
 {
-  auto const bytes = as_bytes(value);
+  auto bytes = as_bytes(value);
   return (!bytes.empty() && byte_eq(bytes.front(), to_u8(opcode::op_return)))
     || (bytes.size() > script_size_limit);
 }
@@ -407,20 +407,20 @@ auto is_unspendable(script_ref value) noexcept -> bool
 auto witness_program(script_ref value) noexcept
   -> std::optional<witness_program_ref>
 {
-  auto const bytes = as_bytes(value);
+  auto bytes = as_bytes(value);
 
   if (bytes.size() < 4 || bytes.size() > 42) {
     return std::nullopt;
   }
 
-  auto const version_code = static_cast<opcode>(to_u8(bytes[0]));
+  auto version_code = static_cast<opcode>(to_u8(bytes[0]));
   if (!is_small_integer(version_code)) {
     return std::nullopt;
   }
 
-  auto const version = decode_small_integer(version_code);
+  auto version = decode_small_integer(version_code);
 
-  auto const program_size = static_cast<std::size_t>(to_u8(bytes[1]));
+  auto program_size = static_cast<std::size_t>(to_u8(bytes[1]));
   if (program_size < 2 || program_size > 40) {
     return std::nullopt;
   }
@@ -435,7 +435,7 @@ auto witness_program(script_ref value) noexcept
 
 auto is_pay_to_script_hash(script_ref value) noexcept -> bool
 {
-  auto const bytes = as_bytes(value);
+  auto bytes = as_bytes(value);
   return (bytes.size() == 23)
     && byte_eq(bytes[0], to_u8(opcode::op_hash160))
     && byte_eq(bytes[1], 0x14)
@@ -444,7 +444,7 @@ auto is_pay_to_script_hash(script_ref value) noexcept -> bool
 
 auto is_pay_to_witness_script_hash(script_ref value) noexcept -> bool
 {
-  auto const bytes = as_bytes(value);
+  auto bytes = as_bytes(value);
   return (bytes.size() == 34)
     && byte_eq(bytes[0], to_u8(opcode::op_0))
     && byte_eq(bytes[1], 0x20);
@@ -452,7 +452,7 @@ auto is_pay_to_witness_script_hash(script_ref value) noexcept -> bool
 
 auto is_pay_to_taproot(script_ref value) noexcept -> bool
 {
-  auto const bytes = as_bytes(value);
+  auto bytes = as_bytes(value);
   return (bytes.size() == 34)
     && byte_eq(bytes[0], to_u8(opcode::op_1))
     && byte_eq(bytes[1], 0x20);

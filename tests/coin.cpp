@@ -53,7 +53,7 @@ struct map_coin_index
   auto lookup(bitcoin::outpoint const& p) const -> std::optional<bitcoin::coin>
   {
     ++lookup_calls;
-    if (auto const it = coins.find(p); it != coins.end()) {
+    if (auto it = coins.find(p); it != coins.end()) {
       return it->second;
     }
     return std::nullopt;
@@ -72,7 +72,7 @@ static_assert(!bitcoin::coin_index<invalid_coin_index>);
 
 TEST_CASE("coin defaults to a zero-valued non-coinbase output")
 {
-  auto const coin = bitcoin::coin{};
+  auto coin = bitcoin::coin{};
 
   CHECK(coin.value() == 0 * satoshi);
   CHECK(coin.output_script().empty());
@@ -82,10 +82,10 @@ TEST_CASE("coin defaults to a zero-valued non-coinbase output")
 
 TEST_CASE("coin copies the output script and preserves its metadata")
 {
-  auto const bytes = std::array{byte(0x51), byte(0x21), byte(0x02)};
+  auto bytes = std::array{byte(0x51), byte(0x21), byte(0x02)};
   auto script = bitcoin::script{std::span{bytes}};
 
-  auto const coin = bitcoin::coin{42 * satoshi, script, 144, true};
+  auto coin = bitcoin::coin{42 * satoshi, script, 144, true};
   script.clear();
 
   CHECK(coin.value() == 42 * satoshi);
@@ -96,13 +96,13 @@ TEST_CASE("coin copies the output script and preserves its metadata")
 
 TEST_CASE("coin equality compares all stored fields")
 {
-  auto const bytes = std::array{byte(0x51)};
-  auto const script = bitcoin::script{std::span{bytes}};
+  auto bytes = std::array{byte(0x51)};
+  auto script = bitcoin::script{std::span{bytes}};
 
-  auto const a = bitcoin::coin{1 * satoshi, script, 7, false};
-  auto const b = bitcoin::coin{1 * satoshi, script, 7, false};
-  auto const different_height = bitcoin::coin{1 * satoshi, script, 8, false};
-  auto const different_coinbase = bitcoin::coin{1 * satoshi, script, 7, true};
+  auto a = bitcoin::coin{1 * satoshi, script, 7, false};
+  auto b = bitcoin::coin{1 * satoshi, script, 7, false};
+  auto different_height = bitcoin::coin{1 * satoshi, script, 8, false};
+  auto different_coinbase = bitcoin::coin{1 * satoshi, script, 7, true};
 
   CHECK(a == b);
   CHECK_FALSE(a == different_height);

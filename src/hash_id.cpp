@@ -21,8 +21,8 @@ auto bitcoin::format_hash_id(
   auto buffer = std::array<char, 64>{};
   auto* out = buffer.begin();
 
-  for (auto const byte : std::views::reverse(bytes)) {
-    auto const value = std::to_integer<unsigned>(byte);
+  for (auto byte : std::views::reverse(bytes)) {
+    auto value = std::to_integer<unsigned>(byte);
     *out++ = hex[value >> 4];
     *out++ = hex[value & 0x0f];
   }

@@ -18,9 +18,9 @@ namespace bitcoin {
 
 validation_status verifier::verify(bitcoin::transaction const& tx) const
 {
-  auto const txn = legacy::convert_tx(tx);
+  auto txn = legacy::convert_tx(tx);
   auto state = TxValidationState{};
-  bool const ok = CheckTransaction(txn, state);
+  auto ok = CheckTransaction(txn, state);
   return ok ? 0 : -1; // state.GetResult();
 }
 

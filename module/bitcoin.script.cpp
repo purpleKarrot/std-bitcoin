@@ -170,17 +170,16 @@ public:
 
   [[nodiscard]] constexpr auto pushes_data() const noexcept -> bool
   {
-    return static_cast<std::uint8_t>(_code)
-      <= static_cast<std::uint8_t>(opcode::op_pushdata4);
+    return std::to_underlying(_code)
+      <= std::to_underlying(opcode::op_pushdata4);
   }
 
 private:
   [[nodiscard]] static constexpr auto _has_valid_immediate(
     opcode code, std::span<std::byte const> immediate) noexcept -> bool
   {
-    auto const raw = static_cast<std::uint8_t>(code);
-
-    if (raw < static_cast<std::uint8_t>(opcode::op_pushdata1)) {
+    if (auto raw = std::to_underlying(code);
+        raw < std::to_underlying(opcode::op_pushdata1)) {
       return immediate.size() == raw;
     }
 

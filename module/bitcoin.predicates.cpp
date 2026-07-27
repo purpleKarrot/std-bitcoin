@@ -36,7 +36,7 @@ export namespace bitcoin {
 // [bitcoin.pred.tx_output]
 [[nodiscard]] bool is_unspendable(tx_output const& o) noexcept
 {
-  auto const bytes = as_bytes(o.script());
+  auto bytes = as_bytes(o.script());
   return !bytes.empty() && bytes.front() == std::byte{0x6a};
 }
 

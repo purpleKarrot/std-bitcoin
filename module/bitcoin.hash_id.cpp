@@ -114,7 +114,7 @@ struct std::hash<bitcoin::basic_hash_id<Tag>>
   [[nodiscard]] auto operator()(
     bitcoin::basic_hash_id<Tag> const& hash) const noexcept
   {
-    auto const bytes = as_bytes(hash);
+    auto bytes = as_bytes(hash);
     auto const* data = reinterpret_cast<char const*>(bytes.data());
     return std::hash<std::string_view>{}(std::string_view{data, bytes.size()});
   }

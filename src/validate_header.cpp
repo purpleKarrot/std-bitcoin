@@ -15,8 +15,8 @@ namespace bitcoin {
 validation_status verifier::verify(block_header const& header) const
 {
   auto state = BlockValidationState{};
-  bool const result = CheckBlockHeader(legacy::convert_header(header), state,
-                                       legacy::convert_consensus(*_params));
+  auto result = CheckBlockHeader(legacy::convert_header(header), state,
+                                 legacy::convert_consensus(*_params));
   return result ? 0 : -1; // state.GetResult();
 }
 
@@ -38,7 +38,7 @@ validation_status verifier::verify(block_header const& header,
   }
 
   auto state = BlockValidationState{};
-  bool const result = ContextualCheckBlockHeader(
+  auto result = ContextualCheckBlockHeader(
     legacy::convert_header(header), state, legacy::convert_consensus(*_params),
     AnyChainView{chain | std::views::transform(legacy::convert_header)},
     NodeClock::time_point{now.time_since_epoch()});

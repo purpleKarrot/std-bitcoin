@@ -65,7 +65,7 @@ validation_status verifier::verify(script_ref script, amount value,
     throw std::invalid_argument("Spent outputs required for taproot");
   }
 
-  auto const tx = legacy::convert_tx(tx_to);
+  auto tx = legacy::convert_tx(tx_to);
   auto txdata = PrecomputedTransactionData{tx};
   if (is_set(flags, validation_flags::taproot)) {
     // clang-format off
@@ -75,11 +75,11 @@ validation_status verifier::verify(script_ref script, amount value,
     // clang-format on
   }
 
-  auto const checker = TransactionSignatureChecker(
+  auto checker = TransactionSignatureChecker(
     &tx, input_index, value.numerical_value_in(units::satoshi), txdata,
     MissingDataBehavior::FAIL);
 
-  bool const result = VerifyScript(
+  auto result = VerifyScript(
     tx.vin[input_index].scriptSig, legacy::convert_script(script),
     &tx.vin[input_index].scriptWitness,
     script_verify_flags::from_int(static_cast<int>(flags)), checker, nullptr);

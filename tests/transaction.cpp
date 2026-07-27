@@ -74,20 +74,20 @@ constexpr auto witness_tx_alt =
 
 TEST_CASE("transaction parsing rejects invalid input")
 {
-  auto const tx = bitcoin::parse_transaction({});
+  auto tx = bitcoin::parse_transaction({});
   CHECK(!tx.has_value());
 }
 
 TEST_CASE("default-constructed transaction is empty")
 {
-  auto const tx = bitcoin::transaction{};
+  auto tx = bitcoin::transaction{};
   CHECK(tx.inputs().empty());
   CHECK(tx.outputs().empty());
 }
 
 TEST_CASE("legacy transaction parses and round-trips")
 {
-  auto const tx = bitcoin::parse_transaction(legacy_tx);
+  auto tx = bitcoin::parse_transaction(legacy_tx);
   REQUIRE(tx.has_value());
 
   auto inputs = tx->inputs();
@@ -95,8 +95,8 @@ TEST_CASE("legacy transaction parses and round-trips")
   REQUIRE(inputs.size() == 1);
   REQUIRE(outputs.size() == 1);
 
-  auto const input = inputs.front();
-  auto const output = outputs.front();
+  auto input = inputs.front();
+  auto output = outputs.front();
 
   CHECK(input.prevout().txid() == bitcoin::txid{});
   CHECK(input.prevout().index() == 0xffffffffU);
@@ -118,17 +118,17 @@ TEST_CASE("legacy transaction parses and round-trips")
 
 TEST_CASE("witness transaction exposes witness and has distinct identifiers")
 {
-  auto const tx = bitcoin::parse_transaction(witness_tx);
+  auto tx = bitcoin::parse_transaction(witness_tx);
   REQUIRE(tx.has_value());
 
   auto inputs = tx->inputs();
   REQUIRE(inputs.size() == 1);
 
-  auto const input = inputs.front();
+  auto input = inputs.front();
   auto witness = input.witness();
   REQUIRE(witness.size() == 1);
 
-  auto const witness_item = witness.front();
+  auto witness_item = witness.front();
   CHECK(std::ranges::equal(witness_item, "dead"_hex));
   CHECK_FALSE(std::ranges::equal(as_bytes(bitcoin::txid{*tx}),
                                  as_bytes(bitcoin::wtxid{*tx})));
@@ -143,14 +143,14 @@ TEST_CASE("transaction parsing rejects trailing bytes")
 {
   auto raw = std::vector(legacy_tx.begin(), legacy_tx.end());
   raw.push_back(std::byte{0x00});
-  auto const tx = bitcoin::parse_transaction(std::span{raw});
+  auto tx = bitcoin::parse_transaction(std::span{raw});
   CHECK(!tx.has_value());
 }
 
 TEST_CASE("tx_input equality includes witness")
 {
-  auto const tx1 = bitcoin::parse_transaction(witness_tx);
-  auto const tx2 = bitcoin::parse_transaction(witness_tx_alt);
+  auto tx1 = bitcoin::parse_transaction(witness_tx);
+  auto tx2 = bitcoin::parse_transaction(witness_tx_alt);
   REQUIRE(tx1.has_value());
   REQUIRE(tx2.has_value());
   CHECK_FALSE(tx1->inputs().front() == tx2->inputs().front());
@@ -162,12 +162,12 @@ TEST_CASE("outpoint hashing is consistent with equality")
   bytes[0] = std::byte{0x12};
   bytes[31] = std::byte{0x34};
 
-  auto const txid = bitcoin::txid{std::span{bytes}};
-  auto const a = bitcoin::outpoint{txid, 7};
-  auto const b = bitcoin::outpoint{txid, 7};
-  auto const c = bitcoin::outpoint{txid, 8};
+  auto txid = bitcoin::txid{std::span{bytes}};
+  auto a = bitcoin::outpoint{txid, 7};
+  auto b = bitcoin::outpoint{txid, 7};
+  auto c = bitcoin::outpoint{txid, 8};
 
-  auto const hash = std::hash<bitcoin::outpoint>{};
+  auto hash = std::hash<bitcoin::outpoint>{};
   CHECK(a == b);
   CHECK(hash(a) == hash(b));
   CHECK(a != c);

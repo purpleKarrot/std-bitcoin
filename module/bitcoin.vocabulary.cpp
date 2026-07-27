@@ -238,8 +238,8 @@ struct std::hash<bitcoin::outpoint>
   [[nodiscard]] auto operator()(bitcoin::outpoint const& value) const noexcept
     -> std::size_t
   {
-    auto const txid = hash<bitcoin::txid>{}(value.txid());
-    auto const index = hash<std::size_t>{}(value.index());
+    auto txid = hash<bitcoin::txid>{}(value.txid());
+    auto index = hash<std::size_t>{}(value.index());
     constexpr auto mix = 0x9e3779b97f4a7c15ULL;
     return txid ^ (index + mix + (txid << 6U) + (txid >> 2U));
   }

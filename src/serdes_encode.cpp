@@ -45,7 +45,7 @@ constexpr auto encode_u64 = [](auto& w, std::uint64_t v) {
 };
 
 constexpr auto encode_hash256 = [](auto& w, auto const& v) {
-  auto const bytes = as_bytes(v);
+  auto bytes = as_bytes(v);
   static_assert(bytes.size() == 32);
   w.write(bytes);
 };
@@ -76,7 +76,7 @@ constexpr auto encode_bytes = [](auto& w, std::span<std::byte const> bytes) {
 constexpr auto encode_range = [](auto& w, auto&& range, auto encode_elem) {
   encode_size(w, std::ranges::size(range));
   for (auto&& elem : std::forward<decltype(range)>(range)) {
-    encode_elem(w, elem);
+    encode_elem(w, std::forward<decltype(elem)>(elem));
   }
 };
 

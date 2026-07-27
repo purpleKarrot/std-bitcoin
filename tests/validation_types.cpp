@@ -15,8 +15,8 @@ TEST_CASE("validation_flags string conversion")
 
 TEST_CASE("validation_status reports success and formats")
 {
-  auto const ok = bitcoin::validation_status{};
-  auto const not_ok = bitcoin::validation_status{1};
+  auto ok = bitcoin::validation_status{};
+  auto not_ok = bitcoin::validation_status{1};
 
   CHECK(ok.ok());
   CHECK(static_cast<bool>(ok));
@@ -29,9 +29,8 @@ TEST_CASE("validation_status reports success and formats")
 
 TEST_CASE("validation_result stores fact and status")
 {
-  auto const success = bitcoin::validation_result<int>{42};
-  auto const failure =
-    bitcoin::validation_result<int>{bitcoin::validation_status{1}};
+  auto success = bitcoin::validation_result<int>{42};
+  auto failure = bitcoin::validation_result<int>{bitcoin::validation_status{1}};
 
   CHECK(success.ok());
   CHECK(success.status().ok());

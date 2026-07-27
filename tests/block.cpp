@@ -66,7 +66,7 @@ TEST_CASE("block header parses and round-trips")
 {
   REQUIRE(header_buf.size() == 80);
 
-  auto const header = bitcoin::parse_block_header(header_buf);
+  auto header = bitcoin::parse_block_header(header_buf);
   REQUIRE(header.has_value());
   CHECK(header->version == 0);
   CHECK(header->prev_block_hash == bitcoin::block_hash{});
@@ -94,10 +94,10 @@ TEST_CASE("block parses and round-trips")
   raw.push_back(std::byte{0x01});
   raw.insert(raw.end(), legacy_tx.begin(), legacy_tx.end());
 
-  auto const block = bitcoin::parse_block(std::span{raw});
+  auto block = bitcoin::parse_block(std::span{raw});
   REQUIRE(block.has_value());
 
-  auto const transactions = block->transactions();
+  auto transactions = block->transactions();
   REQUIRE(transactions.size() == 1);
   CHECK(bitcoin::block_hash{*block} == bitcoin::block_hash{block->header()});
   CHECK(bitcoin::has_coinbase(*block));

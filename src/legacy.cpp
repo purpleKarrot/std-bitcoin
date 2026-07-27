@@ -16,14 +16,14 @@ export namespace legacy {
 
 auto convert_uint256(auto const& in)
 {
-  auto const bytes = as_bytes(in);
+  auto bytes = as_bytes(in);
   static_assert(bytes.size() == 32);
   auto const* data = reinterpret_cast<uint8_t const*>(bytes.data());
   return uint256{std::span{data, 32}};
 }
 
 constexpr auto convert_script = [](bitcoin::script_ref script) {
-  auto const bytes = as_bytes(script);
+  auto bytes = as_bytes(script);
   auto const* data = reinterpret_cast<uint8_t const*>(bytes.data());
   return CScript{data, data + bytes.size()};
 };

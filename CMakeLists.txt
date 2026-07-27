@@ -29,7 +29,7 @@ set(ENABLE_WALLET OFF)
 
 FetchContent_Declare(BitcoinCore EXCLUDE_FROM_ALL
   GIT_REPOSITORY https://github.com/purpleKarrot/bitcoin.git
-  GIT_TAG 36b4638e4c18032d00061304822cbb7f56d7167a
+  GIT_TAG 2eb5aa05f5790377c004b8877ad5449da09bd648
   )
 
 FetchContent_Declare(beman.any_view SYSTEM EXCLUDE_FROM_ALL
