@@ -46,34 +46,6 @@ private:
   std::uint8_t _status = 0;
 };
 
-template <typename Fact>
-class validation_result
-{
-public:
-  constexpr validation_result(Fact value)
-    : _status{0}
-    , _fact{std::move(value)}
-  {
-  }
-
-  constexpr validation_result(validation_status value)
-    : _status{value}
-    , _fact{}
-  {
-  }
-
-  [[nodiscard]] constexpr auto ok() const { return _status.ok(); }
-  [[nodiscard]] constexpr auto fact() const& { return _fact; }
-  [[nodiscard]] constexpr auto fact() && { return std::move(_fact); }
-  [[nodiscard]] constexpr auto status() const { return _status; }
-
-  constexpr explicit operator bool() const { return ok(); }
-
-private:
-  validation_status _status;
-  Fact _fact;
-};
-
 enum class validation_flags : std::uint_least32_t
 {
   none = 0,
@@ -102,33 +74,6 @@ enum class validation_flags : std::uint_least32_t
 } // namespace bitcoin
 
 namespace bitcoin {
-
-class coin_index_ref
-{
-public:
-  template <coin_index T>
-    requires(!std::same_as<std::remove_cvref_t<T>, coin_index_ref>)
-  constexpr coin_index_ref(T& index) noexcept
-    : _object(std::addressof(index))
-    , _lookup([](void* object, outpoint const& p) {
-      return static_cast<T*>(object)->lookup(p);
-    })
-  {
-  }
-
-  [[nodiscard]] auto lookup(outpoint const& p) const
-  {
-    return _lookup(_object, p);
-  }
-
-private:
-  using lookup_fn = std::optional<coin> (*)(void*, outpoint const&);
-
-  void* _object;
-  lookup_fn _lookup;
-};
-
-static_assert(coin_index<coin_index_ref>);
 
 export class verifier
 {
@@ -238,6 +183,31 @@ private:
 
   using any_chain_view = any_sized_random_access_view<block_header>;
   using any_prevouts_view = any_sized_random_access_view<tx_output>;
+
+  class coin_index_ref
+  {
+  public:
+    template <coin_index T>
+      requires(!std::same_as<std::remove_cvref_t<T>, coin_index_ref>)
+    constexpr coin_index_ref(T const& index) noexcept
+      : _object(std::addressof(index))
+      , _lookup([](void const* object, outpoint const& p) {
+        return static_cast<T const*>(object)->lookup(p);
+      })
+    {
+    }
+
+    [[nodiscard]] auto lookup(outpoint const& p) const -> std::optional<coin>
+    {
+      return _lookup(_object, p);
+    }
+
+  private:
+    void const* _object;
+    std::optional<coin> (*_lookup)(void const*, outpoint const&);
+  };
+
+  static_assert(coin_index<coin_index_ref>);
 
   //
   // Block header

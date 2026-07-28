@@ -26,17 +26,3 @@ TEST_CASE("validation_status reports success and formats")
   CHECK(std::format("{}", ok) == "OK");
   CHECK(std::format("{}", not_ok) == "NOT OK");
 }
-
-TEST_CASE("validation_result stores fact and status")
-{
-  auto success = bitcoin::validation_result<int>{42};
-  auto failure = bitcoin::validation_result<int>{bitcoin::validation_status{1}};
-
-  CHECK(success.ok());
-  CHECK(success.status().ok());
-  CHECK(success.fact() == 42);
-
-  CHECK_FALSE(failure.ok());
-  CHECK_FALSE(failure.status().ok());
-  CHECK(failure.fact() == 0);
-}
