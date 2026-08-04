@@ -17,20 +17,54 @@ import :coin;
 import :consensus_parameters;
 import :vocabulary;
 
-export namespace bitcoin {
+namespace bitcoin {
 
-template <typename T>
+export template <typename T>
 concept chain_view = std::ranges::view<T>
   && std::ranges::sized_range<T>
   && std::ranges::random_access_range<T>
   && std::convertible_to<std::ranges::range_reference_t<T>, block_header>;
 
-template <typename T>
-concept coin_index = requires(T const& m, outpoint p) {
-  { m.lookup(p) } -> std::convertible_to<std::optional<coin>>;
+export template <typename T>
+concept coin_index =
+  coin<typename T::mapped_type> && requires(T const& m, outpoint const& p) {
+    {
+      m.lookup(p)
+    } -> std::convertible_to<std::optional<typename T::mapped_type>>;
+  };
+
+class coin_index_ref
+{
+public:
+  using mapped_type = coin_impl;
+
+  template <coin_index T>
+    requires(!std::same_as<std::remove_cvref_t<T>, coin_index_ref>)
+  constexpr coin_index_ref(T const& index) noexcept
+    : _object(std::addressof(index))
+    , _lookup(lookup_fn<T>)
+  {
+  }
+
+  [[nodiscard]] auto lookup(outpoint const& p) const -> std::optional<coin_impl>
+  {
+    return _lookup(_object, p);
+  }
+
+private:
+  template <typename T>
+  static constexpr auto lookup_fn = [](void const* object, outpoint const& p) {
+    auto const& m = *static_cast<T const*>(object);
+    return std::optional{m.lookup(p)}.transform(make_coin_impl);
+  };
+
+  void const* _object;
+  std::optional<coin_impl> (*_lookup)(void const*, outpoint const&);
 };
 
-class validation_status
+static_assert(coin_index<coin_index_ref>);
+
+export class validation_status
 {
 public:
   constexpr validation_status() = default;
@@ -46,8 +80,7 @@ private:
   std::uint8_t _status = 0;
 };
 
-enum class validation_flags : std::uint_least32_t
-{
+export enum class validation_flags : std::uint_least32_t {
   none = 0,
   p2sh = 1U << 0,                 // BIP16
   dersig = 1U << 2,               // BIP66
@@ -65,15 +98,11 @@ enum class validation_flags : std::uint_least32_t
     | taproot,
 };
 
-[[nodiscard]] constexpr auto operator|(validation_flags l,
-                                       validation_flags r) noexcept
+export [[nodiscard]] constexpr auto operator|(validation_flags l,
+                                              validation_flags r) noexcept
 {
   return validation_flags(static_cast<int>(l) | static_cast<int>(r));
 }
-
-} // namespace bitcoin
-
-namespace bitcoin {
 
 export class verifier
 {
@@ -184,31 +213,6 @@ private:
   using any_chain_view = any_sized_random_access_view<block_header>;
   using any_prevouts_view = any_sized_random_access_view<tx_output>;
 
-  class coin_index_ref
-  {
-  public:
-    template <coin_index T>
-      requires(!std::same_as<std::remove_cvref_t<T>, coin_index_ref>)
-    constexpr coin_index_ref(T const& index) noexcept
-      : _object(std::addressof(index))
-      , _lookup([](void const* object, outpoint const& p) {
-        return static_cast<T const*>(object)->lookup(p);
-      })
-    {
-    }
-
-    [[nodiscard]] auto lookup(outpoint const& p) const -> std::optional<coin>
-    {
-      return _lookup(_object, p);
-    }
-
-  private:
-    void const* _object;
-    std::optional<coin> (*_lookup)(void const*, outpoint const&);
-  };
-
-  static_assert(coin_index<coin_index_ref>);
-
   //
   // Block header
   //
@@ -226,7 +230,10 @@ private:
   [[nodiscard]] validation_status verify(bitcoin::block const& block,
                                          any_chain_view chain,
                                          std::chrono::sys_seconds now) const;
-  // validation_status verify(bitcoin::block const& block, chain, now, coins);
+  [[nodiscard]] validation_status verify(bitcoin::block const& block,
+                                         any_chain_view chain,
+                                         std::chrono::sys_seconds now,
+                                         coin_index_ref coins) const;
 
   //
   // Transaction
@@ -256,6 +263,18 @@ private:
 };
 
 export constexpr auto verify = verifier{mainnet::params};
+
+namespace testnet {
+export constexpr auto verify = verifier{params};
+} // namespace testnet
+
+namespace signet {
+export constexpr auto verify = verifier{params};
+} // namespace signet
+
+namespace regtest {
+export constexpr auto verify = verifier{params};
+} // namespace regtest
 
 } // namespace bitcoin
 

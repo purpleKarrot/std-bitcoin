@@ -11,100 +11,70 @@ import bitcoin;
 #include <doctest/doctest.h>
 #include <mp-units/framework.h>
 
-namespace {
-
 using namespace bitcoin::units;
 
-constexpr auto byte(unsigned value) noexcept -> std::byte
-{
-  return std::byte{static_cast<std::uint8_t>(value)};
-}
+namespace {
+namespace coin_with_observers {
 
-struct optional_coin_index
+struct coin_t
 {
-  auto lookup(bitcoin::outpoint const&) const -> std::optional<bitcoin::coin>
-  {
-    return std::nullopt;
-  }
+  [[nodiscard]] bitcoin::amount amount() const;
+  [[nodiscard]] bitcoin::script_ref output_script() const;
+  [[nodiscard]] std::size_t funding_height() const;
+  [[nodiscard]] bool is_coinbase() const;
 };
 
-struct coin_returning_index
+struct coin_map_t
 {
-  bitcoin::coin value;
-
-  auto lookup(bitcoin::outpoint const&) const -> bitcoin::coin { return value; }
+  using mapped_type = coin_t;
+  std::optional<coin_t> lookup(bitcoin::outpoint const&) const;
 };
 
-struct mutable_only_coin_index
+static_assert(bitcoin::coin<coin_t>);
+static_assert(bitcoin::coin_index<coin_map_t>);
+
+} // namespace coin_with_observers
+
+namespace coin_with_hidden_friends {
+
+class coin_t
 {
-  auto lookup(bitcoin::outpoint const&) -> std::optional<bitcoin::coin>
-  {
-    return std::nullopt;
-  }
+  friend bitcoin::amount coin_value(coin_t const&);
+  friend bitcoin::script_ref coin_output_script(coin_t const&);
+  friend std::size_t coin_funding_height(coin_t const&);
+  friend bool coin_is_coinbase(coin_t const&);
 };
 
-struct invalid_coin_index
+struct coin_map_t
 {
-  auto lookup(bitcoin::outpoint const&) const -> int { return 0; }
+  using mapped_type = coin_t;
+  std::optional<coin_t> lookup(bitcoin::outpoint const&) const;
 };
 
-struct map_coin_index
-{
-  auto lookup(bitcoin::outpoint const& p) const -> std::optional<bitcoin::coin>
-  {
-    ++lookup_calls;
-    if (auto it = coins.find(p); it != coins.end()) {
-      return it->second;
-    }
-    return std::nullopt;
-  }
+static_assert(bitcoin::coin<coin_t>);
+static_assert(bitcoin::coin_index<coin_map_t>);
 
-  std::unordered_map<bitcoin::outpoint, bitcoin::coin> coins;
-  mutable std::size_t lookup_calls = 0;
+} // namespace coin_with_hidden_friends
+
+namespace coin_with_free_functions {
+
+struct coin_t
+{
 };
 
+bitcoin::amount coin_value(coin_t const&);
+bitcoin::script_ref coin_output_script(coin_t const&);
+std::size_t coin_funding_height(coin_t const&);
+bool coin_is_coinbase(coin_t const&);
+
+struct coin_map_t
+{
+  using mapped_type = coin_t;
+  std::optional<coin_t> lookup(bitcoin::outpoint const&) const;
+};
+
+static_assert(bitcoin::coin<coin_t>);
+static_assert(bitcoin::coin_index<coin_map_t>);
+
+} // namespace coin_with_free_functions
 } // namespace
-
-static_assert(bitcoin::coin_index<optional_coin_index>);
-static_assert(bitcoin::coin_index<coin_returning_index>);
-static_assert(!bitcoin::coin_index<mutable_only_coin_index>);
-static_assert(!bitcoin::coin_index<invalid_coin_index>);
-
-TEST_CASE("coin defaults to a zero-valued non-coinbase output")
-{
-  auto coin = bitcoin::coin{};
-
-  CHECK(coin.value() == 0 * satoshi);
-  CHECK(coin.output_script().empty());
-  CHECK(coin.funding_height() == 0);
-  CHECK_FALSE(is_coinbase(coin));
-}
-
-TEST_CASE("coin copies the output script and preserves its metadata")
-{
-  auto bytes = std::array{byte(0x51), byte(0x21), byte(0x02)};
-  auto script = bitcoin::script{std::span{bytes}};
-
-  auto coin = bitcoin::coin{42 * satoshi, script, 144, true};
-  script.clear();
-
-  CHECK(coin.value() == 42 * satoshi);
-  CHECK(coin.funding_height() == 144);
-  CHECK(is_coinbase(coin));
-  CHECK(std::ranges::equal(as_bytes(coin.output_script()), std::span{bytes}));
-}
-
-TEST_CASE("coin equality compares all stored fields")
-{
-  auto bytes = std::array{byte(0x51)};
-  auto script = bitcoin::script{std::span{bytes}};
-
-  auto a = bitcoin::coin{1 * satoshi, script, 7, false};
-  auto b = bitcoin::coin{1 * satoshi, script, 7, false};
-  auto different_height = bitcoin::coin{1 * satoshi, script, 8, false};
-  auto different_coinbase = bitcoin::coin{1 * satoshi, script, 7, true};
-
-  CHECK(a == b);
-  CHECK_FALSE(a == different_height);
-  CHECK_FALSE(a == different_coinbase);
-}

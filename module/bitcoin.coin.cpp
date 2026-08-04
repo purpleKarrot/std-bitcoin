@@ -10,48 +10,89 @@ export module bitcoin:coin;
 import :amount;
 import :script;
 
-export namespace bitcoin {
+namespace bitcoin {
 
-class coin
+template <class Coin>
+  requires requires(Coin const& c) {
+    { c.amount() } -> std::convertible_to<bitcoin::amount>;
+  }
+auto coin_value(Coin const& c) -> bitcoin::amount
 {
-public:
-  coin() = default;
-  constexpr coin(bitcoin::amount value, bitcoin::script output_script,
-                 std::size_t funding_height, bool coinbase = false)
-    : _value{value}
-    , _output_script{std::move(output_script)}
-    , _funding_height{funding_height}
-    , _coinbase{coinbase}
-  {
+  return c.amount();
+}
+
+template <class Coin>
+  requires requires(Coin const& c) {
+    { c.output_script() } -> std::convertible_to<bitcoin::script_ref>;
   }
+auto coin_output_script(Coin const& c) -> bitcoin::script_ref
+{
+  return c.output_script();
+}
 
-  [[nodiscard]] constexpr auto value() const -> bitcoin::amount
-  {
-    return _value;
+template <class Coin>
+  requires requires(Coin const& c) {
+    { c.funding_height() } -> std::convertible_to<std::size_t>;
   }
+auto coin_funding_height(Coin const& c) -> std::size_t
+{
+  return c.funding_height();
+}
 
-  [[nodiscard]] auto output_script() const -> bitcoin::script_ref
-  {
-    return _output_script;
+template <class Coin>
+  requires requires(Coin const& c) {
+    { c.is_coinbase() } -> std::convertible_to<bool>;
   }
+auto coin_is_coinbase(Coin const& c) -> bool
+{
+  return c.is_coinbase();
+}
 
-  [[nodiscard]] constexpr auto funding_height() const -> std::size_t
-  {
-    return _funding_height;
-  }
+export template <typename T>
+concept coin = requires(T const& c) {
+  { coin_value(c) } -> std::convertible_to<bitcoin::amount>;
+  { coin_output_script(c) } -> std::convertible_to<bitcoin::script_ref>;
+  { coin_funding_height(c) } -> std::convertible_to<std::size_t>;
+  { coin_is_coinbase(c) } -> std::convertible_to<bool>;
+};
 
-  [[nodiscard]] friend constexpr auto is_coinbase(coin const& c) -> bool
-  {
-    return c._coinbase;
-  }
+struct coin_impl
+{
+  bitcoin::amount value;
+  bitcoin::script_ref output_script;
+  std::size_t funding_height;
+  bool is_coinbase;
+};
 
-  friend bool operator==(coin const&, coin const&) = default;
+auto coin_value(coin_impl const& c) -> bitcoin::amount
+{
+  return c.value;
+}
 
-private:
-  bitcoin::script _output_script;
-  bitcoin::amount _value;
-  std::size_t _funding_height = 0;
-  bool _coinbase = false;
+auto coin_output_script(coin_impl const& c) -> bitcoin::script_ref
+{
+  return c.output_script;
+}
+
+auto coin_funding_height(coin_impl const& c) -> std::size_t
+{
+  return c.funding_height;
+}
+
+auto coin_is_coinbase(coin_impl const& c) -> bool
+{
+  return c.is_coinbase;
+}
+
+static_assert(coin<coin_impl>);
+
+constexpr auto make_coin_impl = [](coin auto const& c) {
+  return coin_impl{
+    .value = coin_value(c),
+    .output_script = coin_output_script(c),
+    .funding_height = coin_funding_height(c),
+    .is_coinbase = coin_is_coinbase(c),
+  };
 };
 
 } // namespace bitcoin
