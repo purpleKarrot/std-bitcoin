@@ -18,7 +18,7 @@ namespace coin_with_observers {
 
 struct coin_t
 {
-  [[nodiscard]] bitcoin::amount amount() const;
+  [[nodiscard]] bitcoin::amount value() const;
   [[nodiscard]] bitcoin::script_ref output_script() const;
   [[nodiscard]] std::size_t funding_height() const;
   [[nodiscard]] bool is_coinbase() const;
@@ -39,10 +39,10 @@ namespace coin_with_hidden_friends {
 
 class coin_t
 {
-  friend bitcoin::amount coin_value(coin_t const&);
-  friend bitcoin::script_ref coin_output_script(coin_t const&);
-  friend std::size_t coin_funding_height(coin_t const&);
-  friend bool coin_is_coinbase(coin_t const&);
+  friend bitcoin::amount value(coin_t const&);
+  friend bitcoin::script_ref output_script(coin_t const&);
+  friend std::size_t funding_height(coin_t const&);
+  friend bool is_coinbase(coin_t const&);
 };
 
 struct coin_map_t
@@ -62,10 +62,10 @@ struct coin_t
 {
 };
 
-bitcoin::amount coin_value(coin_t const&);
-bitcoin::script_ref coin_output_script(coin_t const&);
-std::size_t coin_funding_height(coin_t const&);
-bool coin_is_coinbase(coin_t const&);
+bitcoin::amount value(coin_t const&);
+bitcoin::script_ref output_script(coin_t const&);
+std::size_t funding_height(coin_t const&);
+bool is_coinbase(coin_t const&);
 
 struct coin_map_t
 {
