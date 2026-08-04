@@ -100,7 +100,7 @@ TEST_CASE("block parses and round-trips")
   auto transactions = block->transactions();
   REQUIRE(transactions.size() == 1);
   CHECK(bitcoin::block_hash{*block} == bitcoin::block_hash{block->header()});
-  CHECK(bitcoin::has_coinbase(*block));
+  CHECK(bitcoin::is_coinbase(transactions.front()));
   CHECK(bitcoin::serialized_size(*block) == raw.size());
 
   auto sink = vector_sink{};

@@ -109,6 +109,8 @@ TEST_CASE("legacy transaction parses and round-trips")
 
   CHECK(std::ranges::equal(as_bytes(bitcoin::txid{*tx}),
                            as_bytes(bitcoin::wtxid{*tx})));
+  CHECK(bitcoin::is_coinbase(*tx));
+  CHECK_FALSE(bitcoin::has_witness(*tx));
   CHECK(bitcoin::serialized_size(*tx) == legacy_tx.size());
 
   auto sink = vector_sink{};
@@ -130,6 +132,7 @@ TEST_CASE("witness transaction exposes witness and has distinct identifiers")
 
   auto witness_item = witness.front();
   CHECK(std::ranges::equal(witness_item, "dead"_hex));
+  CHECK(bitcoin::has_witness(*tx));
   CHECK_FALSE(std::ranges::equal(as_bytes(bitcoin::txid{*tx}),
                                  as_bytes(bitcoin::wtxid{*tx})));
   CHECK(bitcoin::serialized_size(*tx) == witness_tx.size());

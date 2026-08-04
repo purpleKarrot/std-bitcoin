@@ -120,7 +120,7 @@ constexpr auto encode_tx_data =
 
 constexpr auto encode_tx = [](auto& w, transaction const& tx) {
   encode_tx_data(w, tx.version(), tx.inputs(), tx.outputs(), tx.locktime(),
-                 is_segwit(tx));
+                 has_witness(tx));
 };
 
 constexpr auto encode_block_header = [](auto& w, block_header const& h) {
@@ -200,12 +200,6 @@ private:
 static_assert(serdes::byte_sink<counting_sink>);
 static_assert(serdes::byte_sink<buffered_sink<counting_sink>>);
 
-inline bool has_witness(std::vector<tx_input> const& inputs)
-{
-  return std::ranges::any_of(
-    inputs, [](tx_input const& input) { return !input.witness().empty(); });
-}
-
 inline auto calc_hash(std::uint32_t version, std::span<tx_input const> inputs,
                       std::span<tx_output const> outputs,
                       std::uint32_t locktime, bool segwit = false)
@@ -228,7 +222,7 @@ transaction::implementation::implementation(std::uint32_t version_,
   , inputs{std::move(inputs_)}
   , outputs{std::move(outputs_)}
   , locktime{locktime_}
-  , is_segwit{has_witness(inputs)}
+  , is_segwit{std::ranges::any_of(inputs, has_witness)}
   , hash{calc_hash(version, inputs, outputs, locktime)}
   , witness_hash{calc_hash(version, inputs, outputs, locktime, is_segwit)}
 {

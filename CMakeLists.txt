@@ -75,8 +75,8 @@ target_sources(stdbtc
     module/bitcoin.amount.cpp
     module/bitcoin.coin.cpp
     module/bitcoin.consensus_parameters.cpp
+    module/bitcoin.customization_points.cpp
     module/bitcoin.hash_id.cpp
-    module/bitcoin.predicates.cpp
     module/bitcoin.script.cpp
     module/bitcoin.serdes.cpp
     module/bitcoin.validation.cpp

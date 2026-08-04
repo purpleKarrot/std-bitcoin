@@ -211,6 +211,10 @@ constexpr auto decode_witness = [](auto& r, std::vector<tx_input> in) {
     auto witness = decode_range(r, decode_bytes);
     elem = tx_input{std::move(elem), std::move(witness)};
   }
+  if (std::ranges::none_of(in, has_witness)) {
+    r.fail();
+    return std::vector<tx_input>{};
+  }
   return in;
 };
 
@@ -233,12 +237,6 @@ constexpr auto decode_tx = [](auto& r) -> transaction {
       return {};
     }
     inputs = decode_witness(r, std::move(inputs));
-    auto has_witness = std::ranges::any_of(
-      inputs, [](tx_input const& elem) { return !elem.witness().empty(); });
-    if (!has_witness) {
-      r.fail();
-      return {};
-    }
   }
 
   auto locktime = decode_u32(r);

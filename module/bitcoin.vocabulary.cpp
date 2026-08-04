@@ -18,6 +18,14 @@ import :script;
 import copy_on_write;
 
 export namespace bitcoin {
+class transaction;
+}
+
+namespace bitcoin::customization_points {
+[[nodiscard]] bool has_witness(transaction const& t);
+}
+
+export namespace bitcoin {
 
 class outpoint
 {
@@ -158,7 +166,7 @@ private:
 
   friend struct txid_policy;
   friend struct wtxid_policy;
-  friend bool is_segwit(transaction const& t);
+  friend bool customization_points::has_witness(transaction const& tx);
 
   xyz::copy_on_write<implementation> _impl;
 };

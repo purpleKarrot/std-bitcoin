@@ -74,10 +74,10 @@ TEST_CASE("coin defaults to a zero-valued non-coinbase output")
 {
   auto coin = bitcoin::coin{};
 
-  CHECK(coin.value() == 0 * satoshi);
-  CHECK(coin.output_script().empty());
-  CHECK(coin.funding_height() == 0);
-  CHECK_FALSE(is_coinbase(coin));
+  CHECK(bitcoin::value(coin) == 0 * satoshi);
+  CHECK(bitcoin::output_script(coin).empty());
+  CHECK(bitcoin::funding_height(coin) == 0);
+  CHECK_FALSE(bitcoin::is_coinbase(coin));
 }
 
 TEST_CASE("coin copies the output script and preserves its metadata")
@@ -88,10 +88,11 @@ TEST_CASE("coin copies the output script and preserves its metadata")
   auto coin = bitcoin::coin{42 * satoshi, script, 144, true};
   script.clear();
 
-  CHECK(coin.value() == 42 * satoshi);
-  CHECK(coin.funding_height() == 144);
-  CHECK(is_coinbase(coin));
-  CHECK(std::ranges::equal(as_bytes(coin.output_script()), std::span{bytes}));
+  CHECK(bitcoin::value(coin) == 42 * satoshi);
+  CHECK(bitcoin::funding_height(coin) == 144);
+  CHECK(bitcoin::is_coinbase(coin));
+  CHECK(std::ranges::equal(as_bytes(bitcoin::output_script(coin)),
+                           std::span{bytes}));
 }
 
 TEST_CASE("coin equality compares all stored fields")
