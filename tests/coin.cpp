@@ -11,101 +11,85 @@ import bitcoin;
 #include <doctest/doctest.h>
 #include <mp-units/framework.h>
 
-namespace {
-
 using namespace bitcoin::units;
 
-constexpr auto byte(unsigned value) noexcept -> std::byte
+namespace {
+namespace coin_with_observers {
+
+struct coin_t
 {
-  return std::byte{static_cast<std::uint8_t>(value)};
+  [[nodiscard]] bitcoin::amount value() const { return {}; }
+  [[nodiscard]] bitcoin::script_ref output_script() const { return {}; }
+  [[nodiscard]] std::size_t funding_height() const { return {}; }
+  [[nodiscard]] bool is_coinbase() const { return {}; }
+};
+
+struct coin_map_t
+{
+  using mapped_type = coin_t;
+  std::optional<coin_t> lookup(bitcoin::outpoint const&) const;
+};
+
+static_assert(bitcoin::coin<coin_t>);
+static_assert(bitcoin::coin_index<coin_map_t>);
+
+} // namespace coin_with_observers
+
+namespace coin_with_hidden_friends {
+
+class coin_t
+{
+  friend bitcoin::amount value(coin_t const&) { return {}; }
+  friend bitcoin::script_ref output_script(coin_t const&) { return {}; }
+  friend std::size_t funding_height(coin_t const&) { return {}; }
+  friend bool is_coinbase(coin_t const&) { return {}; }
+};
+
+struct coin_map_t
+{
+  using mapped_type = coin_t;
+  std::optional<coin_t> lookup(bitcoin::outpoint const&) const;
+};
+
+static_assert(bitcoin::coin<coin_t>);
+static_assert(bitcoin::coin_index<coin_map_t>);
+
+} // namespace coin_with_hidden_friends
+
+namespace coin_with_free_functions {
+
+struct coin_t
+{
+};
+
+bitcoin::amount value(coin_t const&)
+{
+  return {};
 }
 
-struct optional_coin_index
+bitcoin::script_ref output_script(coin_t const&)
 {
-  auto lookup(bitcoin::outpoint const&) const -> std::optional<bitcoin::coin>
-  {
-    return std::nullopt;
-  }
+  return {};
+}
+
+std::size_t funding_height(coin_t const&)
+{
+  return {};
+}
+
+bool is_coinbase(coin_t const&)
+{
+  return {};
+}
+
+struct coin_map_t
+{
+  using mapped_type = coin_t;
+  std::optional<coin_t> lookup(bitcoin::outpoint const&) const;
 };
 
-struct coin_returning_index
-{
-  bitcoin::coin value;
+static_assert(bitcoin::coin<coin_t>);
+static_assert(bitcoin::coin_index<coin_map_t>);
 
-  auto lookup(bitcoin::outpoint const&) const -> bitcoin::coin { return value; }
-};
-
-struct mutable_only_coin_index
-{
-  auto lookup(bitcoin::outpoint const&) -> std::optional<bitcoin::coin>
-  {
-    return std::nullopt;
-  }
-};
-
-struct invalid_coin_index
-{
-  auto lookup(bitcoin::outpoint const&) const -> int { return 0; }
-};
-
-struct map_coin_index
-{
-  auto lookup(bitcoin::outpoint const& p) const -> std::optional<bitcoin::coin>
-  {
-    ++lookup_calls;
-    if (auto it = coins.find(p); it != coins.end()) {
-      return it->second;
-    }
-    return std::nullopt;
-  }
-
-  std::unordered_map<bitcoin::outpoint, bitcoin::coin> coins;
-  mutable std::size_t lookup_calls = 0;
-};
-
+} // namespace coin_with_free_functions
 } // namespace
-
-static_assert(bitcoin::coin_index<optional_coin_index>);
-static_assert(bitcoin::coin_index<coin_returning_index>);
-static_assert(!bitcoin::coin_index<mutable_only_coin_index>);
-static_assert(!bitcoin::coin_index<invalid_coin_index>);
-
-TEST_CASE("coin defaults to a zero-valued non-coinbase output")
-{
-  auto coin = bitcoin::coin{};
-
-  CHECK(bitcoin::value(coin) == 0 * satoshi);
-  CHECK(bitcoin::output_script(coin).empty());
-  CHECK(bitcoin::funding_height(coin) == 0);
-  CHECK_FALSE(bitcoin::is_coinbase(coin));
-}
-
-TEST_CASE("coin copies the output script and preserves its metadata")
-{
-  auto bytes = std::array{byte(0x51), byte(0x21), byte(0x02)};
-  auto script = bitcoin::script{std::span{bytes}};
-
-  auto coin = bitcoin::coin{42 * satoshi, script, 144, true};
-  script.clear();
-
-  CHECK(bitcoin::value(coin) == 42 * satoshi);
-  CHECK(bitcoin::funding_height(coin) == 144);
-  CHECK(bitcoin::is_coinbase(coin));
-  CHECK(std::ranges::equal(as_bytes(bitcoin::output_script(coin)),
-                           std::span{bytes}));
-}
-
-TEST_CASE("coin equality compares all stored fields")
-{
-  auto bytes = std::array{byte(0x51)};
-  auto script = bitcoin::script{std::span{bytes}};
-
-  auto a = bitcoin::coin{1 * satoshi, script, 7, false};
-  auto b = bitcoin::coin{1 * satoshi, script, 7, false};
-  auto different_height = bitcoin::coin{1 * satoshi, script, 8, false};
-  auto different_coinbase = bitcoin::coin{1 * satoshi, script, 7, true};
-
-  CHECK(a == b);
-  CHECK_FALSE(a == different_height);
-  CHECK_FALSE(a == different_coinbase);
-}

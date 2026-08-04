@@ -3,7 +3,6 @@
 export module bitcoin;
 
 export import :amount;
-export import :coin;
 export import :consensus_parameters;
 export import :customization_points;
 export import :hash_id;

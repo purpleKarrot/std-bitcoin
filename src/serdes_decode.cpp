@@ -207,9 +207,8 @@ constexpr auto decode_txout = [](auto& r) {
 };
 
 constexpr auto decode_witness = [](auto& r, std::vector<tx_input> in) {
-  for (auto& elem : in) {
-    auto witness = decode_range(r, decode_bytes);
-    elem = tx_input{std::move(elem), std::move(witness)};
+  for (tx_input& elem : in) {
+    elem = tx_input{std::move(elem), decode_range(r, decode_bytes)};
   }
   if (std::ranges::none_of(in, has_witness)) {
     r.fail();
