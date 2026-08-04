@@ -57,11 +57,7 @@ enum class validation_flags : std::uint_least32_t
   return validation_flags(static_cast<int>(l) | static_cast<int>(r));
 }
 
-} // namespace bitcoin
-
-namespace bitcoin {
-
-export class verifier
+class verifier
 {
 public:
   constexpr explicit verifier(consensus_parameters const& params) noexcept
@@ -205,7 +201,19 @@ private:
   consensus_parameters const* _params;
 };
 
-export constexpr auto verify = verifier{mainnet::params};
+constexpr auto verify = verifier{mainnet::params};
+
+namespace testnet {
+constexpr auto verify = verifier{params};
+} // namespace testnet
+
+namespace signet {
+constexpr auto verify = verifier{params};
+} // namespace signet
+
+namespace regtest {
+constexpr auto verify = verifier{params};
+} // namespace regtest
 
 } // namespace bitcoin
 
