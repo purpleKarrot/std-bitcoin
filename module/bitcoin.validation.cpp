@@ -6,40 +6,15 @@ module;
 #include <cstdint>
 #include <format>
 #include <type_traits>
-#include <utility>
-
-#include <beman/any_view/any_view.hpp>
-#include <beman/any_view/any_view_options.hpp>
 
 export module bitcoin:validation;
 
+import :concepts;
 import :consensus_parameters;
-import :customization_points;
+import :type_erasure;
 import :vocabulary;
 
 export namespace bitcoin {
-
-template <typename T>
-concept chain_view = std::ranges::view<T>
-  && std::ranges::sized_range<T>
-  && std::ranges::random_access_range<T>
-  && std::convertible_to<std::ranges::range_reference_t<T>, block_header>;
-
-template <typename T>
-concept coin = requires(T const& c) {
-  { value(c) } -> std::convertible_to<amount>;
-  { output_script(c) } -> std::convertible_to<script_ref>;
-  { funding_height(c) } -> std::convertible_to<std::size_t>;
-  { is_coinbase(c) } -> std::convertible_to<bool>;
-};
-
-template <typename T>
-concept coin_index =
-  coin<typename T::mapped_type> && requires(T const& m, outpoint const& p) {
-    {
-      m.lookup(p)
-    } -> std::convertible_to<std::optional<typename T::mapped_type>>;
-  };
 
 class validation_status
 {
@@ -183,84 +158,13 @@ public:
   }
 
 private:
-  static constexpr auto sized_random_access =
-    beman::any_view::any_view_options::copyable
-    | beman::any_view::any_view_options::sized
-    | beman::any_view::any_view_options::random_access;
-
-  template <typename T>
-  using any_sized_random_access_view =
-    beman::any_view::any_view<T const, sized_random_access>;
-
-  using any_chain_view = any_sized_random_access_view<block_header>;
-  using any_prevouts_view = any_sized_random_access_view<tx_output>;
-
-  class coin_t
-  {
-  public:
-    coin_t(bitcoin::coin auto const& c)
-      : _value{bitcoin::value(c)}
-      , _script{bitcoin::output_script(c)}
-      , _height{bitcoin::funding_height(c)}
-      , _coinbase{bitcoin::is_coinbase(c)}
-    {
-    }
-
-    [[nodiscard]] auto value() const -> amount { return _value; }
-    [[nodiscard]] auto output_script() const -> script_ref { return _script; }
-    [[nodiscard]] auto funding_height() const -> std::size_t { return _height; }
-    [[nodiscard]] auto is_coinbase() const -> bool { return _coinbase; }
-
-  private:
-    bitcoin::amount _value;
-    bitcoin::script_ref _script;
-    std::size_t _height = 0;
-    bool _coinbase = false;
-  };
-
-  static_assert(coin<coin_t>);
-
-  class coin_index_ref
-  {
-  public:
-    using mapped_type = coin_t;
-
-    template <coin_index T>
-      requires(!std::same_as<std::remove_cvref_t<T>, coin_index_ref>)
-    constexpr coin_index_ref(T const& index) noexcept
-      : _object(std::addressof(index))
-      , _lookup(lookup_fn<T>)
-    {
-    }
-
-    [[nodiscard]] auto lookup(outpoint const& p) const
-      -> std::optional<mapped_type>
-    {
-      return _lookup(_object, p);
-    }
-
-  private:
-    template <typename T>
-    static constexpr auto lookup_fn =
-      [](void const* object, outpoint const& p) {
-        auto const& m = *static_cast<T const*>(object);
-        return std::optional{m.lookup(p)}.transform(
-          [](auto const& c) { return coin_t{c}; });
-      };
-
-    void const* _object;
-    std::optional<mapped_type> (*_lookup)(void const*, outpoint const&);
-  };
-
-  static_assert(coin_index<coin_index_ref>);
-
   //
   // Block header
   //
 
   [[nodiscard]] validation_status verify(block_header const& header) const;
   [[nodiscard]] validation_status verify(block_header const& header,
-                                         any_chain_view chain,
+                                         type_erasure::any_chain_view chain,
                                          std::chrono::sys_seconds now) const;
 
   //
@@ -269,17 +173,19 @@ private:
 
   [[nodiscard]] validation_status verify(bitcoin::block const& block) const;
   [[nodiscard]] validation_status verify(bitcoin::block const& block,
-                                         any_chain_view chain,
+                                         type_erasure::any_chain_view chain,
                                          std::chrono::sys_seconds now) const;
-  // validation_status verify(bitcoin::block const& block, chain, now, coins);
+  [[nodiscard]] validation_status verify(
+    bitcoin::block const& block, type_erasure::any_chain_view chain,
+    std::chrono::sys_seconds now, type_erasure::coin_index_ref coins) const;
 
   //
   // Transaction
   //
 
   [[nodiscard]] validation_status verify(bitcoin::transaction const& tx) const;
-  [[nodiscard]] validation_status verify(bitcoin::transaction const& tx,
-                                         any_chain_view chain) const;
+  [[nodiscard]] validation_status verify(
+    bitcoin::transaction const& tx, type_erasure::any_chain_view chain) const;
   // validation_status verify(bitcoin::transaction const& tx, chain,
   // coins)const;
 
@@ -287,11 +193,10 @@ private:
   // Script
   //
 
-  [[nodiscard]] validation_status verify(script_ref script, amount value,
-                                         transaction const& tx,
-                                         std::size_t input_index,
-                                         validation_flags flags,
-                                         any_prevouts_view prevouts) const;
+  [[nodiscard]] validation_status verify(
+    script_ref script, amount value, transaction const& tx,
+    std::size_t input_index, validation_flags flags,
+    type_erasure::any_prevouts_view prevouts) const;
 
   //
   // Parameters

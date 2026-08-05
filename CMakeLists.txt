@@ -73,11 +73,13 @@ target_sources(stdbtc
   PUBLIC FILE_SET CXX_MODULES BASE_DIRS module FILES
     module/bitcoin.cpp
     module/bitcoin.amount.cpp
+    module/bitcoin.concepts.cpp
     module/bitcoin.consensus_parameters.cpp
     module/bitcoin.customization_points.cpp
     module/bitcoin.hash_id.cpp
     module/bitcoin.script.cpp
     module/bitcoin.serdes.cpp
+    module/bitcoin.type_erasure.cpp
     module/bitcoin.validation.cpp
     module/bitcoin.vocabulary.cpp
     module/copy_on_write.cpp

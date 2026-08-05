@@ -24,7 +24,7 @@ validation_status verifier::verify(bitcoin::block const& b) const
 }
 
 validation_status verifier::verify(bitcoin::block const& b,
-                                   any_chain_view chain, // NOLINT
+                                   type_erasure::any_chain_view chain, // NOLINT
                                    std::chrono::sys_seconds now) const
 {
   if (auto status = verify(b.header(), chain, now); !status.ok()) {
@@ -36,6 +36,14 @@ validation_status verifier::verify(bitcoin::block const& b,
     legacy::convert_block(b), state, legacy::convert_consensus(*_params),
     AnyChainView{chain | std::views::transform(legacy::convert_header)});
   return result ? 0 : -1; // state.GetResult();
+}
+
+validation_status verifier::verify(bitcoin::block const& b,
+                                   type_erasure::any_chain_view chain, // NOLINT
+                                   std::chrono::sys_seconds now,
+                                   type_erasure::coin_index_ref coins) const
+{
+  return -1;
 }
 
 } // namespace bitcoin

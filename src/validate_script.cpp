@@ -44,11 +44,10 @@ bool is_valid_flag_combination(script_verify_flags flags)
 
 namespace bitcoin {
 
-validation_status verifier::verify(script_ref script, amount value,
-                                   transaction const& tx_to,
-                                   std::size_t input_index,
-                                   validation_flags flags,
-                                   any_prevouts_view prevouts) const
+validation_status verifier::verify(
+  script_ref script, amount value, transaction const& tx_to,
+  std::size_t input_index, validation_flags flags,
+  type_erasure::any_prevouts_view prevouts) const
 {
   assert(input_index < tx_to.inputs().size());
 
