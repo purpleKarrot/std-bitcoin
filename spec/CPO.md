@@ -86,15 +86,15 @@ that the wording of [@VOCABULARY] has been applied.
 ### [bitcoin.cpo.syn] Synopsis
 
 ```cpp
-namespace bitcoin {
+namespace bitcoin::inline /* $unspecified$ */ {
 
-  inline constexpr /* unspecified */ value = /* unspecified */;
-  inline constexpr /* unspecified */ output_script = /* unspecified */;
-  inline constexpr /* unspecified */ funding_height = /* unspecified */;
-  inline constexpr /* unspecified */ is_coinbase = /* unspecified */;
-  inline constexpr /* unspecified */ has_witness = /* unspecified */;
+  inline constexpr /* $unspecified$ */ value = /* $unspecified$ */;
+  inline constexpr /* $unspecified$ */ output_script = /* $unspecified$ */;
+  inline constexpr /* $unspecified$ */ funding_height = /* $unspecified$ */;
+  inline constexpr /* $unspecified$ */ is_coinbase = /* $unspecified$ */;
+  inline constexpr /* $unspecified$ */ has_witness = /* $unspecified$ */;
 
-} // namespace bitcoin
+}
 ```
 
 These names denote customization point objects. The effect of calling a

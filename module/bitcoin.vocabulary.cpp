@@ -18,14 +18,6 @@ import :script;
 import copy_on_write;
 
 export namespace bitcoin {
-class transaction;
-}
-
-namespace bitcoin::customization_points {
-[[nodiscard]] bool has_witness(transaction const& t);
-}
-
-export namespace bitcoin {
 
 class outpoint
 {
@@ -40,10 +32,10 @@ public:
   [[nodiscard]] constexpr auto txid() const -> bitcoin::txid { return _txid; }
   [[nodiscard]] constexpr auto index() const -> std::size_t { return _index; }
 
+private:
   friend bool operator==(outpoint const&, outpoint const&) = default;
   friend auto operator<=>(outpoint const& lhs, outpoint const&) = default;
 
-private:
   bitcoin::txid _txid;
   std::size_t _index{};
 };
@@ -91,9 +83,14 @@ public:
   [[nodiscard]] auto sequence() const -> std::uint32_t { return _sequence; }
   [[nodiscard]] auto witness() const -> witness_view { return _witness; }
 
+private:
   friend bool operator==(tx_input const&, tx_input const&) = default;
 
-private:
+  friend bool has_witness(tx_input const& input)
+  {
+    return !input._witness.empty();
+  }
+
   bitcoin::outpoint _prevout;
   bitcoin::script _script;
   std::uint32_t _sequence{};
@@ -113,9 +110,14 @@ public:
   [[nodiscard]] auto value() const noexcept -> amount { return _value; }
   [[nodiscard]] auto script() const noexcept -> script_ref { return _script; }
 
+private:
   friend bool operator==(tx_output const&, tx_output const&) = default;
 
-private:
+  friend auto output_script(tx_output const& output) -> script_ref
+  {
+    return output.script();
+  }
+
   bitcoin::amount _value;
   bitcoin::script _script;
 };
@@ -138,8 +140,6 @@ public:
   [[nodiscard]] std::uint32_t locktime() const { return _impl->locktime; }
   [[nodiscard]] input_view inputs() const { return _impl->inputs; }
   [[nodiscard]] output_view outputs() const { return _impl->outputs; }
-
-  friend bool operator==(transaction const&, transaction const&) = default;
 
 private:
   struct implementation
@@ -164,9 +164,24 @@ private:
     }
   };
 
+  friend bool operator==(transaction const&, transaction const&) = default;
+
+  friend bool has_witness(transaction const& tx) { return tx._impl->is_segwit; }
+
+  friend bool is_coinbase(transaction const& tx)
+  {
+    auto const& inputs = tx._impl->inputs;
+    if (inputs.size() != 1) {
+      return false;
+    }
+
+    auto const& prevout = inputs.front().prevout();
+    return !static_cast<bool>(prevout.txid())
+      && (prevout.index() == 0xFFFF'FFFFu);
+  }
+
   friend struct txid_policy;
   friend struct wtxid_policy;
-  friend bool customization_points::has_witness(transaction const& tx);
 
   xyz::copy_on_write<implementation> _impl;
 };
@@ -205,8 +220,6 @@ public:
     return _impl->transactions;
   }
 
-  friend bool operator==(block const& lhs, block const& rhs) = default;
-
 private:
   struct implementation
   {
@@ -216,6 +229,8 @@ private:
     friend bool operator==(implementation const&,
                            implementation const&) = default;
   };
+
+  friend bool operator==(block const& lhs, block const& rhs) = default;
 
   xyz::copy_on_write<implementation> _impl;
 };
