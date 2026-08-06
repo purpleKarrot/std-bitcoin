@@ -1,4 +1,4 @@
-# std-bitcoin
+# `std::bitcoin`
 
 API specification papers for Bitcoin in C++, written in the style of WG21
 standardization proposals.
