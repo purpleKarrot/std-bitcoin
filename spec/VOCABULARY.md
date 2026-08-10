@@ -28,41 +28,23 @@ not under active consideration for standardization.]{.draftnote}
 
 This paper proposes adding a set of vocabulary types for the Bitcoin protocol to
 the C++ Standard Library under the header `<bitcoin>`. These types live in
-`namespace bitcoin`. The proposed facility provides zero-overhead, strongly
-typed vocabulary types intended to improve interoperability among independently
-developed libraries. Wire-format parsing and serialization are intentionally
-specified separately.
+`namespace bitcoin`. The types provide common, strongly typed representations
+for fundamental Bitcoin protocol entities, allowing independently developed code
+to exchange these entities without conversions between library-specific types.
+Wire-format parsing and serialization are not proposed by this paper.
 
 # Motivation and Scope
 
-Bitcoin and the broader ecosystem of protocols built on top of it (Lightning
-Network, Liquid, Ark, …) are implemented in many independent C++ libraries.
-Such libraries commonly define their own `uint256`, `CTransaction`, `CTxOut`,
-or equivalent types. These types are often structurally similar yet
-source-incompatible, so code that crosses library boundaries typically requires
-adaptation code and conversions.
+Code implementing the Bitcoin protocol needs common representations for
+fundamental protocol entities such as transaction identifiers, monetary amounts,
+scripts, transactions, and blocks. When these entities are represented by
+library-specific types, code that interfaces between libraries must translate
+between those types even when they represent the same protocol entity.
 
-This is similar to other cases in which the standard library provides a common
-vocabulary type for facilities that would otherwise be modeled independently by
-each implementation. This paper applies the same approach to core Bitcoin
-wire-protocol types.
+This paper proposes vocabulary types for these entities so that independently
+developed components can exchange them directly.
 
-## In scope
-
-- 32-byte hash types: `hash256`, `txid`, `wtxid`, `block_hash`
-- Monetary value: `amount`
-- Script byte container: `script`
-- Transaction structure: `outpoint`, `tx_input`, `tx_output`, `transaction`
-- Block structure: `block_header`, `block`
-
-## Out of scope
-
-- Script execution / interpreter
-- Cryptographic primitives (hashing, ECDSA, Schnorr)
-- Networking / P2P protocol
-- Wallet key derivation (BIP-32, BIP-39)
-- Consensus validation logic
-- Transaction, block-header, and block wire-format parsing and serialization
+Wire-format parsing and serialization are not part of this proposal.
 
 # Impact on the Standard
 
@@ -80,20 +62,19 @@ No existing names are modified or deprecated.
 
 `txid`, `wtxid`, `block_hash`, and `hash256` are all 32-byte digest values, but
 they must not be implicitly interconvertible. A function accepting a `txid` must
-not silently accept a `block_hash` or a `wtxid`. This rules out aliasing
-them to the same underlying type (for example,
-`using txid = std::array<std::byte, 32>`{.cpp}).
-The proposal models these as distinct specializations of an exposition-only
-template `$basic-hash-id$<Tag>`{.cpp}, producing separate,
-non-interconvertible types with identical storage representation.
+not silently accept a `block_hash` or a `wtxid`. This rules out aliasing them to
+the same underlying type (for example,
+`using txid = std::array<std::byte, 32>`{.cpp}). The proposal models these as
+distinct specializations of an exposition-only template
+`$basic-hash-id$<Tag>`{.cpp}, producing separate, non-interconvertible types
+with identical storage representation.
 
 ## Storage and display byte order
 
 Bitcoin's double-SHA256 digests are stored on the wire in little-endian
-("natural hash") byte order. Block explorers, wallet software, and similar
-tools commonly display them with the bytes reversed. The proposed types store
-wire order internally. `std::format` and `std::to_string` produce the customary
-display representation.
+("natural hash") byte order. Block explorers, wallet software, and similar tools
+commonly display them with the bytes reversed. The proposed types store wire
+order internally. `std::format` produces the customary display representation.
 
 ## Distinct monetary type
 
@@ -117,18 +98,18 @@ provide script-level iteration operations directly.
 
 Providing both types permits accessors such as `tx_input::script()` and
 `tx_output::script()` to return a script by value without requiring the
-implementation to store a `script` subobject internally or to allocate and
-copy on every access. An implementation may therefore store a script directly,
-store offsets into transaction backing storage, or use any other
-representation consistent with the specified observers.
+implementation to store a `script` subobject internally or to allocate and copy
+on every access. An implementation may therefore store a script directly, store
+offsets into transaction backing storage, or use any other representation
+consistent with the specified observers.
 
 ## No `size()` observer for script types
 
-A script has at least two natural notions of size: serialized byte count and,
-in a future decoding facility, instruction count. An unqualified `size()`
-observer would therefore obscure the unit being measured. The byte count is
-obtainable as `as_bytes(s).size()`. Any future instruction-level facility can
-expose its own size in terms appropriate to that facility.
+A script has at least two natural notions of size: serialized byte count and, in
+a future decoding facility, instruction count. An unqualified `size()` observer
+would therefore obscure the unit being measured. The byte count is obtainable as
+`as_bytes(s).size()`. Any future instruction-level facility can expose its own
+size in terms appropriate to that facility.
 
 ## Script length limits are not class invariants
 
@@ -147,15 +128,15 @@ returning an implementation-defined range of byte strings. An empty range
 indicates a non-SegWit input. The segregated-witness wire-format defined in
 [@BIP141] places witness data at the end of the transaction, but that is an
 encoding artifact and imposes no constraint on the vocabulary-level design.
-Implementations may store witness data with each input or in a separate
-parallel structure.
+Implementations may store witness data with each input or in a separate parallel
+structure.
 
 ## Aggregate `block_header`
 
-`block_header` is specified as an aggregate struct with public data members
-to allows aggregate initialization. Hash computation is handled by the
-`block_hash` constructor rather than a member function, preserving the
-separation between data and computation.
+`block_header` is specified as an aggregate struct with public data members to
+allow aggregate initialization. Hash computation is handled by the `block_hash`
+constructor rather than a member function, preserving the separation between
+data and computation.
 
 ## Opaque class types
 
@@ -174,36 +155,36 @@ construction, conversion, and formatting through the quantity interface.
 
 ## Accessor naming
 
-Bitcoin Core [@BitcoinCore] uses the legacy terms `scriptSig` and
-`scriptPubKey` for the input authorization script and output locking script,
-respectively. The clearer alternatives are `input_script` and
-`output_script`; however, in the proposed interface, the owning classes
-`tx_input` and `tx_output` already supply that input/output context. The
-accessors are therefore simply named `script()`.
+Bitcoin Core [@BitcoinCore] uses the legacy terms `scriptSig` and `scriptPubKey`
+for the input authorization script and output locking script, respectively. The
+clearer alternatives are `input_script` and `output_script`; however, in the
+proposed interface, the owning classes `tx_input` and `tx_output` already supply
+that input/output context. The accessors are therefore simply named `script()`.
 
 ## ABI considerations
 
-This paper does not mandate any particular ABI versioning scheme. Whether to
-use per-type `inline namespace` versioning (e.g. `inline namespace
-transaction_v1`), a single top-level `inline namespace bitcoin_v1`, or no
-versioning at all is an implementer's choice. The paper requires only that all
-types and constants are accessible as `bitcoin::hash256`, `bitcoin::amount`,
-etc. — i.e. as direct members of `namespace bitcoin`.
+This paper does not mandate any particular ABI versioning scheme. Whether to use
+per-type `inline namespace` versioning (e.g. `inline namespace transaction_v1`),
+a single top-level `inline namespace bitcoin_v1`, or no versioning at all is an
+implementer's choice. The paper requires only that all types and constants are
+accessible as `bitcoin::hash256`, `bitcoin::amount`, etc. — i.e. as direct
+members of `namespace bitcoin`.
 
-## Exposition-only range helper  {#range-helper}
+## Exposition-only range helper {#range-helper}
 
 One exposition-only helper constrains return types of collection accessors in
 this paper. It is not part of the public API.
 
-`$value-range$<T>`{.cpp} is a **named requirement** for the unspecified return
-types of collection accessors. A type `R` satisfies `$value-range$<T>`{.cpp}
-if it models `std::ranges::view`, `std::ranges::sized_range`, and
-`std::ranges::random_access_range`, and `std::ranges::range_value_t<R>` is
-`T`. The reference type is implementation-defined: implementations may return
-`const T&` into stored elements or `T` by value for handle-based types. Each
-collection class exposes its return type as a named member typedef (e.g.
-`transaction::input_view`) whose concrete type is *implementation-defined* but
-must satisfy `$value-range$<T>`{.cpp}.
+`$value-range$<T>`{.cpp} is an exposition-only requirement for the unspecified
+return types of collection accessors. A type `R` satisfies
+`$value-range$<T>`{.cpp} if it models `std::ranges::view`,
+`std::ranges::sized_range`, and `std::ranges::random_access_range`,
+and`std::ranges::range_value_t<R>` is `T`. The reference type is
+implementation-defined: implementations may return `const T&` into stored
+elements or `T` by value for handle-based types. Each collection class exposes
+its return type as a named member typedef (e.g. `transaction::input_view`) whose
+concrete type is *implementation-defined* but must satisfy
+`$value-range$<T>`{.cpp}.
 
 # Proposed wording
 
@@ -292,16 +273,16 @@ namespace bitcoin {
 ### [bitcoin.hashid.overview]
 
 `$basic-hash-id$`{.cpp} is an exposition-only class template. `hash256`
-([bitcoin.hash256]), `txid` ([bitcoin.txid]), `wtxid` ([bitcoin.wtxid]),
-and `block_hash` ([bitcoin.block_hash]) are distinct specializations with
-unspecified tag types. Specializations with different tag types are
-unrelated types; comparisons between them are ill-formed.
+([bitcoin.hash256]), `txid` ([bitcoin.txid]), `wtxid` ([bitcoin.wtxid]), and
+`block_hash` ([bitcoin.block_hash]) are distinct specializations with
+unspecified tag types. Specializations with different tag types are unrelated
+types; comparisons between them are ill-formed.
 
 A default-constructed `$basic-hash-id$`{.cpp} holds all-zero bytes.
 
 An exposition-only concept `$is-hash-source$<Tag, T>`{.cpp} is satisfied when
-`T` is a permitted source type for constructing the hash specialization with
-tag `Tag`. The permitted pairs are:
+`T` is a permitted source type for constructing the hash specialization with tag
+`Tag`. The permitted pairs are:
 
 | `Tag`             | `T`               |
 |-------------------|--------------------|
@@ -310,8 +291,8 @@ tag `Tag`. The permitted pairs are:
 | `txid` tag        | `transaction`      |
 | `wtxid` tag       | `transaction`      |
 
-No other pairs satisfy the concept. In particular, `hash256` has no
-hash-source types.
+No other pairs satisfy the concept. In particular, `hash256` has no hash-source
+types.
 
 ### [bitcoin.hashid.syn] Synopsis
 
@@ -374,16 +355,15 @@ template<class T>
 explicit $basic-hash-id$(const T& src);
 ```
 
-*Returns:* A `$basic-hash-id$` whose stored bytes are the SHA256d digest
-computed from `src` as follows:
+*Effects:* Computes the SHA256d digest of the serialization of `src` and
+initializes the object with the resulting digest as follows:
 
-- If `T` is `block_header`, the SHA256d of the serialized block header
-  fields.
+- If `T` is `block_header`, the SHA256d of the serialized block header fields.
 - If `T` is `block`, equivalent to `$basic-hash-id$<Tag>(src.header())`.
 - If `T` is `transaction` and `Tag` is the `txid` tag, the SHA256d of the
   witness-stripped serialization of `src`.
-- If `T` is `transaction` and `Tag` is the `wtxid` tag, the SHA256d of the
-  full serialization of `src` including witness data.
+- If `T` is `transaction` and `Tag` is the `wtxid` tag, the SHA256d of the full
+  serialization of `src` including witness data.
 
 ### [bitcoin.hashid.obs] Observers
 
@@ -408,13 +388,13 @@ wire order), as used by block explorers.
 
 ### [bitcoin.hashid.hash] Hash support
 
-`std::hash<bitcoin::$basic-hash-id$<Tag>>`{.cpp} is provided. The hash value
-is computed over the 32 wire-order bytes of the value.
+`std::hash<bitcoin::$basic-hash-id$<Tag>>`{.cpp} is provided. The hash value is
+computed over the 32 wire-order bytes of the value.
 
 ## [bitcoin.hash256] Type `hash256`
 
-`hash256` is a general-purpose 32-byte hash value, used where no stronger
-domain type applies — for example, the merkle root in a block header
+`hash256` is a general-purpose 32-byte hash value, used where no stronger domain
+type applies — for example, the merkle root in a block header
 ([bitcoin.block_header]).
 
 ### [bitcoin.hash256.syn] Synopsis
@@ -536,7 +516,7 @@ friend bool operator==(const script& lhs, const script& rhs) noexcept;
 ```
 
 *Returns:* `true` if `as_bytes(lhs)` and `as_bytes(rhs)` compare equal
- element-wise; otherwise `false`.
+element-wise; otherwise `false`.
 
 ## [bitcoin.script.ref] Class `script_ref`
 
@@ -584,8 +564,8 @@ script_ref(const script& s) noexcept;
 
 *Effects:* Initializes the referenced byte sequence to `as_bytes(s)`.
 
-*Remarks:* The deleted rvalue constructor overloads prevent `script_ref`
-from binding to a temporary `script`.
+*Remarks:* The deleted rvalue constructor overloads prevent `script_ref` from
+binding to a temporary `script`.
 
 ### [bitcoin.script.ref.obs] Observers and hidden friends
 
@@ -607,9 +587,14 @@ friend bool operator==(script_ref lhs, script_ref rhs) noexcept;
 ```
 
 *Returns:* `true` if `as_bytes(lhs)` and `as_bytes(rhs)` compare equal
- element-wise; otherwise `false`.
+element-wise; otherwise `false`.
 
 ## [bitcoin.outpoint] Class `outpoint`
+
+### [bitcoin.outpoint.overview]
+
+`outpoint` identifies a transaction output by its transaction identifier and
+output index.
 
 ### [bitcoin.outpoint.syn] Synopsis
 
@@ -618,6 +603,8 @@ namespace bitcoin {
 
   class outpoint {
   public:
+    constexpr outpoint(bitcoin::txid txid, std::size_t index) noexcept;
+
     [[nodiscard]] bitcoin::txid txid() const noexcept;
     [[nodiscard]] std::size_t index() const noexcept;
 
@@ -683,16 +670,16 @@ namespace bitcoin {
 [[nodiscard]] std::uint32_t sequence() const noexcept;
 ```
 
-*Returns:* The previous output, a non-owning `script_ref` referring to the
-input script, and the sequence number, respectively.
+*Returns:* The previous output, a non-owning `script_ref` referring to the input
+script, and the sequence number, respectively.
 
 ```cpp
 [[nodiscard]] witness_view witness() const;
 ```
 
 *Returns:* A view of the witness items for this input. Each element is a
-`std::span<const std::byte>` over one witness item. An empty view indicates
-a non-SegWit input.
+`std::span<const std::byte>` over one witness item. An empty view indicates a
+non-SegWit input.
 
 ## [bitcoin.tx_output] Class `tx_output`
 
@@ -720,18 +707,17 @@ namespace bitcoin {
 [[nodiscard]] bitcoin::script_ref script() const noexcept;
 ```
 
-*Returns:* The stored output value and a non-owning `script_ref`
-referring to the output script, respectively.
+*Returns:* The stored output value and a non-owning `script_ref` referring to
+the output script, respectively.
 
 ## [bitcoin.transaction] Class `transaction`
 
 ### [bitcoin.transaction.overview]
 
-`input_view` and `output_view` each satisfy the `$value-range$<T>`{.cpp}
-named requirement for their respective element types. Objects of type
-`transaction` may be default-constructed. All other construction is
-implementation-defined. Wire-format parsing and serialization are specified
-separately.
+`input_view` and `output_view` each satisfy the `$value-range$<T>`{.cpp} named
+requirement for their respective element types. Objects of type `transaction`
+may be default-constructed. All other construction is implementation-defined.
+Wire-format parsing and serialization are specified separately.
 
 ### [bitcoin.transaction.syn] Synopsis
 
@@ -826,9 +812,9 @@ header: `bitcoin::block_hash{hdr}`. See [bitcoin.hashid.cons].
 ### [bitcoin.block.overview]
 
 `transaction_view` satisfies the `$value-range$<bitcoin::transaction>`{.cpp}
-named requirement. Objects of type `block` may be default-constructed. All
-other construction is implementation-defined. Wire-format parsing and
-serialization are specified separately.
+named requirement. Objects of type `block` may be default-constructed. All other
+construction is implementation-defined. Wire-format parsing and serialization
+are specified separately.
 
 ### [bitcoin.block.syn] Synopsis
 
@@ -870,6 +856,5 @@ block();
 [[nodiscard]] transaction_view transactions() const;
 ```
 
-*Returns:* A view of the transactions. By convention,
-`transactions().front()` is the coinbase transaction when the block is
-non-empty.
+*Returns:* A view of the transactions. By convention, `transactions().front()`
+is the coinbase transaction when the block is non-empty.
