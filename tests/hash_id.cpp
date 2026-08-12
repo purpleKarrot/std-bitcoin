@@ -13,6 +13,8 @@ import bitcoin;
 
 #include <doctest/doctest.h>
 
+#include "hex.hpp"
+
 namespace {
 
 constexpr auto sample_bytes() -> std::array<std::byte, 32>
@@ -70,9 +72,13 @@ TEST_CASE("hash ids compare by stored bytes")
 
 TEST_CASE("hash ids format as lowercase hex in display byte order")
 {
+  using namespace hex_literal;
   auto bytes = sample_bytes();
   auto id = bitcoin::txid{std::span{bytes}};
 
+  CHECK(
+    id
+    == "6745000000000000000000000000000000000000000000000000000000002301"_txid);
   CHECK(std::format("{}", id)
         == "6745000000000000000000000000000000000000000000000000000000002301");
 }

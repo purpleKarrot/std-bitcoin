@@ -95,29 +95,9 @@ constexpr auto convert_block = [](bitcoin::block const& in) {
 };
 
 constexpr auto convert_consensus = [](bitcoin::consensus_parameters const& in) {
-  auto out = Consensus::Params{};
+  auto out = Consensus::Params{}; // CChainParams::Main()->GetConsensus();
 
-  out.hashGenesisBlock = convert_uint256(in.genesis_block_hash);
-  out.nSubsidyHalvingInterval = static_cast<int>(in.halving_interval);
-  // out.script_flag_exceptions;
-  // out.BIP34Height;
-  // out.BIP34Hash;
-  // out.BIP65Height;
-  // out.BIP66Height;
-  // out.CSVHeight;
-  // out.SegwitHeight;
-  // out.MinBIP9WarningHeight;
-  // out.vDeployments;
-  // out.powLimit;
-  // out.fPowAllowMinDifficultyBlocks;
-  // out.enforce_BIP94;
-  // out.fPowNoRetargeting;
-  // out.nPowTargetSpacing;
-  // out.nPowTargetTimespan;
-  // out.nMinimumChainWork;
-  // out.defaultAssumeValid;
-  // out.signet_blocks;
-  // out.signet_challenge;
+  out.powLimit = convert_uint256(in.pow_limit);
 
   return out;
 };

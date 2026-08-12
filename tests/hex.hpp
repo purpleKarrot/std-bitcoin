@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 
@@ -38,12 +39,45 @@ struct hex_data
   }
 };
 
+template <typename T, hex_data S>
+consteval auto make_hash_id()
+{
+  auto result = S.bytes;
+  static_assert(result.size() == sizeof(T));
+  std::ranges::reverse(result);
+  return T{result};
+}
+
 } // namespace detail
 
 template <detail::hex_data S>
 consteval auto operator""_hex()
 {
   return S.bytes;
+}
+
+template <detail::hex_data S>
+consteval auto operator""_block_hash()
+{
+  return detail::make_hash_id<bitcoin::block_hash, S>();
+}
+
+template <detail::hex_data S>
+consteval auto operator""_txid()
+{
+  return detail::make_hash_id<bitcoin::txid, S>();
+}
+
+template <detail::hex_data S>
+consteval auto operator""_wtxid()
+{
+  return detail::make_hash_id<bitcoin::wtxid, S>();
+}
+
+template <detail::hex_data S>
+consteval auto operator""_hash256()
+{
+  return detail::make_hash_id<bitcoin::hash256, S>();
 }
 
 } // namespace hex_literal

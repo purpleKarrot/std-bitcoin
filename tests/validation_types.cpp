@@ -16,12 +16,10 @@ TEST_CASE("validation_flags string conversion")
 TEST_CASE("validation_status reports success and formats")
 {
   auto ok = bitcoin::validation_status{};
-  auto not_ok = bitcoin::validation_status{1};
+  auto not_ok = bitcoin::validation_status{"NOT OK"};
 
-  CHECK(ok.ok());
-  CHECK(static_cast<bool>(ok));
-  CHECK_FALSE(not_ok.ok());
-  CHECK_FALSE(static_cast<bool>(not_ok));
+  CHECK(ok);
+  CHECK_FALSE(not_ok);
 
   CHECK(std::format("{}", ok) == "OK");
   CHECK(std::format("{}", not_ok) == "NOT OK");

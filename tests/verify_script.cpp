@@ -33,7 +33,7 @@ TEST_CASE("p2pkh verification")
 {
   // Spending a P2PKH output using a mainnet tx with id
   // aca326a724eda9a461c10a876534ecd5ae7b27f10f26c3862fb996f80ea2d45d
-  auto spk =
+  auto scp =
     bitcoin::script{"76a9144bfbaf6afb76cc5771bc6404810d1cc041a6933988ac"_hex};
   auto tx_valid = *bitcoin::parse_transaction(
     "02000000013f7cebd65c27431a90bba7f796914fe8cc2ddfc3f2cbd6f7e5f2fc854534da95"
@@ -45,8 +45,8 @@ TEST_CASE("p2pkh verification")
     "6acb0700"_hex);
   auto amount = 0 * bitcoin::units::satoshi;
 
-  CHECK(verify(spk, amount, tx_valid, 0, flags::none));
-  CHECK(verify(spk, amount, tx_valid, 0, flags::all & ~flags::taproot));
+  CHECK(verify(scp, amount, tx_valid, 0, flags::none));
+  CHECK(verify(scp, amount, tx_valid, 0, flags::all & ~flags::taproot));
 
   // same tx but with corrupted signature
   auto tx_corrupted_sig = *bitcoin::parse_transaction(
@@ -57,7 +57,7 @@ TEST_CASE("p2pkh verification")
     "17feffffff02836d3c01000000001976a914fc25d6d5c94003bf5b0c7b640a248e2c637fcf"
     "b088ac7ada8202000000001976a914fbed3d9b11183209a57999d54d59f67c019e756c88ac"
     "6acb0700"_hex);
-  CHECK(!verify(spk, amount, tx_corrupted_sig, 0, flags::none));
+  CHECK(!verify(scp, amount, tx_corrupted_sig, 0, flags::none));
 
   // same tx but with a non-DER signature
   auto tx_non_der_sig = *bitcoin::parse_transaction(
@@ -68,15 +68,15 @@ TEST_CASE("p2pkh verification")
     "17feffffff02836d3c01000000001976a914fc25d6d5c94003bf5b0c7b640a248e2c637fcf"
     "b088ac7ada8202000000001976a914fbed3d9b11183209a57999d54d59f67c019e756c88ac"
     "6acb0700"_hex);
-  CHECK(verify(spk, amount, tx_non_der_sig, 0, flags::none));
-  CHECK(!verify(spk, amount, tx_non_der_sig, 0, flags::dersig));
+  CHECK(verify(scp, amount, tx_non_der_sig, 0, flags::none));
+  CHECK(!verify(scp, amount, tx_non_der_sig, 0, flags::dersig));
 }
 
 TEST_CASE("p2sh multisig verification")
 {
   // Spending a multisig P2SH output using a mainnet tx with id
   // 3cd7f78499632d6f672d8a9412ae756b29c41342954c97846e0d153c7753a37e
-  auto spk =
+  auto scp =
     bitcoin::script{"a914fc8b5799cb5ae54c1be1fd97844a1cd97e820c5587"_hex};
   auto tx_valid = *bitcoin::parse_transaction(
     "0100000001dd320ee7e290ddd042332f85dd064d2ee052257a9f4761929c237a7674ff1f0d"
@@ -92,8 +92,8 @@ TEST_CASE("p2sh multisig verification")
     "000000"_hex);
   auto amount = 0 * bitcoin::units::satoshi;
 
-  CHECK(verify(spk, amount, tx_valid, 0, flags::p2sh));
-  CHECK(verify(spk, amount, tx_valid, 0, flags::all & ~flags::taproot));
+  CHECK(verify(scp, amount, tx_valid, 0, flags::p2sh));
+  CHECK(verify(scp, amount, tx_valid, 0, flags::all & ~flags::taproot));
 
   // same tx but with corrupted signature
   auto tx_corrupted_sig = *bitcoin::parse_transaction(
@@ -108,8 +108,8 @@ TEST_CASE("p2sh multisig verification")
     "53aeffffffff02846a8700000000001976a914932850c5373a1dda47027c51125b0493c026"
     "c9a388ac4da06c000000000017a91498dd7103a99f268f443fee4424a240af3d4a5aeb8700"
     "000000"_hex);
-  CHECK(!verify(spk, amount, tx_corrupted_sig, 0, flags::p2sh));
-  CHECK(verify(spk, amount, tx_corrupted_sig, 0, flags::none));
+  CHECK(!verify(scp, amount, tx_corrupted_sig, 0, flags::p2sh));
+  CHECK(verify(scp, amount, tx_corrupted_sig, 0, flags::none));
 
   // same tx but with a non-null dummy stack element
   auto tx_non_null_dummy = *bitcoin::parse_transaction(
@@ -124,15 +124,15 @@ TEST_CASE("p2sh multisig verification")
     "53aeffffffff02846a8700000000001976a914932850c5373a1dda47027c51125b0493c026"
     "c9a388ac4da06c000000000017a91498dd7103a99f268f443fee4424a240af3d4a5aeb8700"
     "000000"_hex);
-  CHECK(verify(spk, amount, tx_non_null_dummy, 0, flags::p2sh));
+  CHECK(verify(scp, amount, tx_non_null_dummy, 0, flags::p2sh));
   CHECK(
-    !verify(spk, amount, tx_non_null_dummy, 0, flags::p2sh | flags::nulldummy));
+    !verify(scp, amount, tx_non_null_dummy, 0, flags::p2sh | flags::nulldummy));
 }
 
 TEST_CASE("cltv verification")
 {
   // Spending a CLTV-locked P2SH output (locked to block 100)
-  auto spk =
+  auto scp =
     bitcoin::script{"a914e6855a94d0e499a0d554b2476cb779885986575b87"_hex};
 
   // tx with locktime 100 (satisfying CLTV condition)
@@ -144,9 +144,9 @@ TEST_CASE("cltv verification")
     "841deddd0dac000000000118ddf50500000000015164000000"_hex);
   auto amount = 0 * bitcoin::units::satoshi;
 
-  CHECK(verify(spk, amount, tx_locktime_100, 0,
+  CHECK(verify(scp, amount, tx_locktime_100, 0,
                flags::p2sh | flags::checklocktimeverify));
-  CHECK(verify(spk, amount, tx_locktime_100, 0, flags::all & ~flags::taproot));
+  CHECK(verify(scp, amount, tx_locktime_100, 0, flags::all & ~flags::taproot));
 
   // tx with locktime 50 (not satisfying CLTV condition)
   auto tx_locktime_50 = *bitcoin::parse_transaction(
@@ -155,15 +155,15 @@ TEST_CASE("cltv verification")
     "a6bc0b58ee78022054011b17b5d7d8b516d1ced26d124b435a5c4cccc7492778ab2a6661f5"
     "ef365801270164b1752102d8019ae39403a4c0b49e98a0be4ed9ad0b1ba20f324fd6268c74"
     "55841deddd0dac000000000118ddf50500000000015132000000"_hex);
-  CHECK(!verify(spk, amount, tx_locktime_50, 0,
+  CHECK(!verify(scp, amount, tx_locktime_50, 0,
                 flags::p2sh | flags::checklocktimeverify));
-  CHECK(verify(spk, amount, tx_locktime_50, 0, flags::p2sh));
+  CHECK(verify(scp, amount, tx_locktime_50, 0, flags::p2sh));
 }
 
 TEST_CASE("csv verification")
 {
   // Spending a CSV-locked P2SH output (locked to sequence 10)
-  auto spk =
+  auto scp =
     bitcoin::script{"a914284e9e01049bc9bfe2a1f06e6e78cd29a717ffb987"_hex};
 
   // tx with input sequence 10 (satisfying CSV condition)
@@ -175,9 +175,9 @@ TEST_CASE("csv verification")
     "dd22f388553fac0a0000000118ddf50500000000015100000000"_hex);
   auto amount = 0 * bitcoin::units::satoshi;
 
-  CHECK(verify(spk, amount, tx_sequence_10, 0,
+  CHECK(verify(scp, amount, tx_sequence_10, 0,
                flags::p2sh | flags::checksequenceverify));
-  CHECK(verify(spk, amount, tx_sequence_10, 0, flags::all & ~flags::taproot));
+  CHECK(verify(scp, amount, tx_sequence_10, 0, flags::all & ~flags::taproot));
 
   // tx with input sequence 5 (not satisfying CSV condition)
   auto tx_sequence_5 = *bitcoin::parse_transaction(
@@ -186,16 +186,16 @@ TEST_CASE("csv verification")
     "febcdc8341da02204775fed6dedc3b540eea67c3bf8058e1211248970cdab9980c0ed09736"
     "e13fbb0127010ab275210291c420b3afc1c75796653268a727d61df2edd606c243b261df61"
     "dd22f388553fac050000000118ddf50500000000015100000000"_hex);
-  CHECK(!verify(spk, amount, tx_sequence_5, 0,
+  CHECK(!verify(scp, amount, tx_sequence_5, 0,
                 flags::p2sh | flags::checksequenceverify));
-  CHECK(verify(spk, amount, tx_sequence_5, 0, flags::p2sh));
+  CHECK(verify(scp, amount, tx_sequence_5, 0, flags::p2sh));
 }
 
 TEST_CASE("p2sh p2wpkh verification")
 {
   // Spending a P2SH-P2WPKH output using a mainnet tx with id
   // 07dea5918a500d7476b1d116d80507a66bc2167681b2e6ca7dd99dbc6d95c31d
-  auto spk =
+  auto scp =
     bitcoin::script{"a91434c06f8c87e355e123bdc6dda4ffabc64b6989ef87"_hex};
   auto tx_valid = *bitcoin::parse_transaction(
     "01000000000101d9fd94d0ff0026d307c994d0003180a5f248146efb6371d040c5973f5f66"
@@ -206,8 +206,8 @@ TEST_CASE("p2sh p2wpkh verification")
     "303c76d12c089c8724c1b230e3b745693bbe16aad536293d15e300000000"_hex);
   auto amount = 1900000 * bitcoin::units::satoshi;
 
-  CHECK(verify(spk, amount, tx_valid, 0, flags::p2sh | flags::witness));
-  CHECK(verify(spk, amount, tx_valid, 0, flags::all & ~flags::taproot));
+  CHECK(verify(scp, amount, tx_valid, 0, flags::p2sh | flags::witness));
+  CHECK(verify(scp, amount, tx_valid, 0, flags::all & ~flags::taproot));
 
   // same tx but with corrupted signature
   auto tx_corrupted_sig = *bitcoin::parse_transaction(
@@ -218,15 +218,15 @@ TEST_CASE("p2sh p2wpkh verification")
     "408a021ad2631bc29a67bd6915b2d7e9ef0265627eabd7f7234455f6012103e7e802f50344"
     "303c76d12c089c8724c1b230e3b745693bbe16aad536293d15e300000000"_hex);
   CHECK(
-    !verify(spk, amount, tx_corrupted_sig, 0, flags::p2sh | flags::witness));
-  CHECK(verify(spk, amount, tx_corrupted_sig, 0, flags::p2sh));
+    !verify(scp, amount, tx_corrupted_sig, 0, flags::p2sh | flags::witness));
+  CHECK(verify(scp, amount, tx_corrupted_sig, 0, flags::p2sh));
 }
 
 TEST_CASE("p2sh p2wsh verification")
 {
   // Spending a P2SH-P2WSH output using a mainnet tx with id
   // 017be55761bf5a3920c73778810a6be4c3315dc6efa4f31b590bc3bc1da9d75f
-  auto spk =
+  auto scp =
     bitcoin::script{"a91469abb4763c2074e22a2ab2e06208f552bf7c654387"_hex};
   auto tx_valid = *bitcoin::parse_transaction(
     "020000000001018d30fa8c3023ae9e72f44cea3525b4fe084a816830efb98b605678230cc9"
@@ -242,8 +242,8 @@ TEST_CASE("p2sh p2wsh verification")
     "4b78c0479a35e7c9b4cc3c13456f12ba993a8f19a38ee3b2d7743953ae00000000"_hex);
   auto amount = 2825108081 * bitcoin::units::satoshi;
 
-  CHECK(verify(spk, amount, tx_valid, 0, flags::p2sh | flags::witness));
-  CHECK(verify(spk, amount, tx_valid, 0, flags::all & ~flags::taproot));
+  CHECK(verify(scp, amount, tx_valid, 0, flags::p2sh | flags::witness));
+  CHECK(verify(scp, amount, tx_valid, 0, flags::all & ~flags::taproot));
 
   // same tx but with corrupted signature
   auto tx_corrupted_sig = *bitcoin::parse_transaction(
@@ -259,15 +259,15 @@ TEST_CASE("p2sh p2wsh verification")
     "6ab0277cae2a8b138527816bf9f36a7203265d83e08bbeaebdd7e1568b2c21030e724028e6"
     "4b78c0479a35e7c9b4cc3c13456f12ba993a8f19a38ee3b2d7743953ae00000000"_hex);
   CHECK(
-    !verify(spk, amount, tx_corrupted_sig, 0, flags::p2sh | flags::witness));
-  CHECK(verify(spk, amount, tx_corrupted_sig, 0, flags::p2sh));
+    !verify(scp, amount, tx_corrupted_sig, 0, flags::p2sh | flags::witness));
+  CHECK(verify(scp, amount, tx_corrupted_sig, 0, flags::p2sh));
 }
 
 TEST_CASE("p2wpkh verification")
 {
   // Spending a native P2WPKH output using a mainnet tx with id
   // 00000000102d4e899ec7cc3656d91ab83aa8e95807dabb90fbe16a1a9e70b6ab
-  auto spk =
+  auto scp =
     bitcoin::script{"0014141e536966344275512b7c2f49be5b8fbe7fbd05"_hex};
   auto tx_valid = *bitcoin::parse_transaction(
     "0200000000010118cd99a3898c2b63da66ec9b7e1d15928453a0b3c2fa74fd748830420000"
@@ -278,20 +278,20 @@ TEST_CASE("p2wpkh verification")
     "297da555d2d73d"_hex);
   auto amount = 5003 * bitcoin::units::satoshi;
 
-  CHECK(verify(spk, amount, tx_valid, 0, flags::p2sh | flags::witness));
-  CHECK(verify(spk, amount, tx_valid, 0, flags::all & ~flags::taproot));
+  CHECK(verify(scp, amount, tx_valid, 0, flags::p2sh | flags::witness));
+  CHECK(verify(scp, amount, tx_valid, 0, flags::all & ~flags::taproot));
 
   // using wrong amount
-  CHECK(!verify(spk, 5002 * bitcoin::units::satoshi, tx_valid, 0,
+  CHECK(!verify(scp, 5002 * bitcoin::units::satoshi, tx_valid, 0,
                 flags::p2sh | flags::witness));
-  CHECK(verify(spk, 5002 * bitcoin::units::satoshi, tx_valid, 0, flags::p2sh));
+  CHECK(verify(scp, 5002 * bitcoin::units::satoshi, tx_valid, 0, flags::p2sh));
 }
 
 TEST_CASE("p2wsh verification")
 {
   // Spending a P2WSH output using a mainnet tx with id
   // 12fc05be6778b06e77191e8fb18fee632b2d92efa0b6830e1cf63e28723a8b8f
-  auto spk = bitcoin::script{
+  auto scp = bitcoin::script{
     "0020b38c970d115bffbc7d16c5f3fc858cefe3448c8d141a679b65554de78a88a0cd"_hex};
   auto tx_valid = *bitcoin::parse_transaction(
     "01000000000102e1434357ad4d08274ed106e21f2694d35000b46e66b1dd714d63e9cd3f2a"
@@ -313,8 +313,8 @@ TEST_CASE("p2wsh verification")
     "0794e3e6953c09066888ac00000000"_hex);
   auto amount = 1480000 * bitcoin::units::satoshi;
 
-  CHECK(verify(spk, amount, tx_valid, 1, flags::p2sh | flags::witness));
-  CHECK(verify(spk, amount, tx_valid, 1, flags::all & ~flags::taproot));
+  CHECK(verify(scp, amount, tx_valid, 1, flags::p2sh | flags::witness));
+  CHECK(verify(scp, amount, tx_valid, 1, flags::all & ~flags::taproot));
 
   // same tx but with corrupted signature
   auto tx_corrupted_sig = *bitcoin::parse_transaction(
@@ -336,15 +336,15 @@ TEST_CASE("p2wsh verification")
     "d3a0bccafb8b57ee0c071e5abd7967043cc18969b17576a914ad27aa467040ddf17bbea8be"
     "0794e3e6953c09066888ac00000000"_hex);
   CHECK(
-    !verify(spk, amount, tx_corrupted_sig, 1, flags::p2sh | flags::witness));
-  CHECK(verify(spk, amount, tx_corrupted_sig, 1, flags::p2sh));
+    !verify(scp, amount, tx_corrupted_sig, 1, flags::p2sh | flags::witness));
+  CHECK(verify(scp, amount, tx_corrupted_sig, 1, flags::p2sh));
 }
 
 TEST_CASE("p2tr keypath verification")
 {
   // Spending a P2TR output via the key-path using a mainnet tx with id
   // 33e794d097969002ee05d336686fc03c9e15a597c1b9827669460fac98799036
-  auto spk = bitcoin::script{
+  auto scp = bitcoin::script{
     "5120339ce7e165e67d93adb3fef88a6d4beed33f01fa876f05a225242b82a631abc0"_hex};
   auto tx_valid = *bitcoin::parse_transaction(
     "01000000000101d1f1c1f8cdf6759167b90f52c9ad358a369f95284e841d7a2536cef31c05"
@@ -354,11 +354,11 @@ TEST_CASE("p2tr keypath verification")
     "28f90140a60c383f71bac0ec919b1d7dbc3eb72dd56e7aa99583615564f9f99b8ae4e837b7"
     "58773a5b2e4c51348854c8389f008e05029db7f464a5ff2e01d5e6e626174affd30a00"_hex);
   auto amount = 88480 * bitcoin::units::satoshi;
-  auto output = bitcoin::tx_output{amount, spk};
+  auto output = bitcoin::tx_output{amount, scp};
   auto base_flags = flags::p2sh | flags::witness | flags::taproot;
 
-  CHECK(verify(spk, amount, tx_valid, 0, base_flags, std::span{&output, 1}));
-  CHECK(verify(spk, amount, tx_valid, 0, flags::all, std::span{&output, 1}));
+  CHECK(verify(scp, amount, tx_valid, 0, base_flags, std::span{&output, 1}));
+  CHECK(verify(scp, amount, tx_valid, 0, flags::all, std::span{&output, 1}));
 
   // same tx but with corrupted signature
   auto tx_corrupted_sig = *bitcoin::parse_transaction(
@@ -368,9 +368,9 @@ TEST_CASE("p2tr keypath verification")
     "00000000225120a37c3903c8d0db6512e2b40b0dffa05e5a3ab73603ce8c9c4b7771e54123"
     "28f90140a60c383f71bac0ec919b1d7dbc3eb72dd56e7aa99583615564f9f99b8ae4e837b7"
     "58772a5b2e4c51348854c8389f008e05029db7f464a5ff2e01d5e6e626174affd30a00"_hex);
-  CHECK(!verify(spk, amount, tx_corrupted_sig, 0, base_flags,
+  CHECK(!verify(scp, amount, tx_corrupted_sig, 0, base_flags,
                 std::span{&output, 1}));
-  CHECK(verify(spk, amount, tx_corrupted_sig, 0, base_flags & ~flags::taproot,
+  CHECK(verify(scp, amount, tx_corrupted_sig, 0, base_flags & ~flags::taproot,
                std::span{&output, 1}));
 }
 
@@ -378,7 +378,7 @@ TEST_CASE("p2tr scriptpath verification")
 {
   // Spending a P2TR output via the script-path using a mainnet tx with id
   // 1ba232a8bf936cf24155292c9a4330298278f572bacc78455eb68e3552197c30
-  auto spk = bitcoin::script{
+  auto scp = bitcoin::script{
     "5120e687f4f55e3de5264cf4c4f43b53edb5c26e4adae3a3098ce918a663582785bd"_hex};
   auto tx_valid = *bitcoin::parse_transaction(
     "02000000000102761402258bf42275f52db288dbbc8fdfe30b35dea86c5425a57feef1a400"
@@ -402,12 +402,12 @@ TEST_CASE("p2tr scriptpath verification")
       bitcoin::script{
         "51207ee3c4ab9c8144be0e39fc849fab95e70da97fb0d70754b34553c25f9d325fa0"_hex},
     },
-    bitcoin::tx_output{amount, spk},
+    bitcoin::tx_output{amount, scp},
   };
   auto base_flags = flags::p2sh | flags::witness | flags::taproot;
 
-  CHECK(verify(spk, amount, tx_valid, 1, base_flags, outputs));
-  CHECK(verify(spk, amount, tx_valid, 1, flags::all, outputs));
+  CHECK(verify(scp, amount, tx_valid, 1, base_flags, outputs));
+  CHECK(verify(scp, amount, tx_valid, 1, flags::all, outputs));
 
   // same tx but with corrupted signature
   auto tx_corrupted_sig = *bitcoin::parse_transaction(
@@ -425,7 +425,7 @@ TEST_CASE("p2tr scriptpath verification")
     "ad202b74c2011af089c849383ee527c72325de52df6a788428b68d49e9174053aabaac41c1"
     "50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0675a94484b"
     "3d55d76af4a2275d327a47c1ec5c7d2232596a09fc883d40bb237e00000000"_hex);
-  CHECK(!verify(spk, amount, tx_corrupted_sig, 1, base_flags, outputs));
-  CHECK(verify(spk, amount, tx_corrupted_sig, 1, base_flags & ~flags::taproot,
+  CHECK(!verify(scp, amount, tx_corrupted_sig, 1, base_flags, outputs));
+  CHECK(verify(scp, amount, tx_corrupted_sig, 1, base_flags & ~flags::taproot,
                outputs));
 }

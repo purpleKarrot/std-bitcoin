@@ -96,7 +96,6 @@ target_sources(stdbtc
     src/validate_script.cpp
     src/validate_transaction.cpp
     src/validation_flags.cpp
-    src/validation_status.cpp
     src/vocabulary_format.cpp
   )
 

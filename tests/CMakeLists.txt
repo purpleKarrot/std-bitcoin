@@ -14,8 +14,9 @@ add_executable(stdbtc-tests
   hash_id.cpp
   script.cpp
   transaction.cpp
-  validation.cpp
   validation_types.cpp
+  verify_header.cpp
+  verify_script.cpp
   )
 
 target_link_libraries(stdbtc-tests PRIVATE

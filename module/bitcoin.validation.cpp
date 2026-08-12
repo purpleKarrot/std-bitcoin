@@ -19,17 +19,25 @@ export namespace bitcoin {
 class validation_status
 {
 public:
-  constexpr validation_status() = default;
-  constexpr validation_status(std::uint8_t status)
-    : _status(status)
+  validation_status() = default;
+
+  constexpr explicit operator bool() const { return _rejected_rule.empty(); }
+
+  // internal
+  constexpr validation_status(std::string rejected_rule)
+    : _rejected_rule{std::move(rejected_rule)}
   {
   }
 
-  [[nodiscard]] constexpr auto ok() const { return _status == 0; }
-  constexpr explicit operator bool() const { return ok(); }
+  // internal
+  auto _format_to(std::format_context& ctx) const
+  {
+    auto str = _rejected_rule.empty() ? "OK" : std::string_view{_rejected_rule};
+    return std::ranges::copy(str, ctx.out()).out;
+  }
 
 private:
-  std::uint8_t _status = 0;
+  std::string _rejected_rule;
 };
 
 enum class validation_flags : std::uint_least32_t
@@ -245,6 +253,9 @@ struct std::formatter<bitcoin::validation_status>
     return it;
   }
 
-  auto format(bitcoin::validation_status status, format_context& ctx) const
-    -> format_context::iterator;
+  auto format(bitcoin::validation_status const& status,
+              format_context& ctx) const
+  {
+    return status._format_to(ctx);
+  }
 };

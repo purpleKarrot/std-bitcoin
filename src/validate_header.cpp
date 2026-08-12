@@ -17,7 +17,7 @@ validation_status verifier::verify(block_header const& header) const
   auto state = BlockValidationState{};
   auto result = CheckBlockHeader(legacy::convert_header(header), state,
                                  legacy::convert_consensus(*_params));
-  return result ? 0 : -1; // state.GetResult();
+  return result ? validation_status{} : state.GetRejectReason();
 }
 
 validation_status verifier::verify(block_header const& header,
@@ -29,12 +29,12 @@ validation_status verifier::verify(block_header const& header,
   // }
 
   if (chain.empty()) {
-    return -1;
+    return validation_status{"parent not found"};
   }
 
   if (header.prev_block_hash
       != block_hash{std::ranges::common_view(chain).back()}) {
-    return -1;
+    return validation_status{"parent not found"};
   }
 
   auto state = BlockValidationState{};
@@ -42,7 +42,7 @@ validation_status verifier::verify(block_header const& header,
     legacy::convert_header(header), state, legacy::convert_consensus(*_params),
     AnyChainView{chain | std::views::transform(legacy::convert_header)},
     NodeClock::time_point{now.time_since_epoch()});
-  return result ? 0 : -1; // state.GetResult();
+  return result ? validation_status{} : state.GetRejectReason();
 }
 
 } // namespace bitcoin

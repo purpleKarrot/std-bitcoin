@@ -297,6 +297,13 @@ struct std::formatter<bitcoin::transaction> : std::formatter<std::string_view>
 };
 
 template <>
+struct std::formatter<bitcoin::block_header> : std::formatter<std::string_view>
+{
+  auto format(bitcoin::block_header const& obj, std::format_context& ctx) const
+    -> std::format_context::iterator;
+};
+
+template <>
 struct std::formatter<bitcoin::block> : std::formatter<std::string_view>
 {
   auto format(bitcoin::block const& obj, std::format_context& ctx) const

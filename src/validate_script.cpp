@@ -82,8 +82,11 @@ validation_status verifier::verify(
     tx.vin[input_index].scriptSig, legacy::convert_script(script),
     &tx.vin[input_index].scriptWitness,
     script_verify_flags::from_int(static_cast<int>(flags)), checker, nullptr);
+  if (!result) {
+    return validation_status{"Script verification failed"};
+  }
 
-  return result ? 0 : -1;
+  return {};
 }
 
 } // namespace bitcoin

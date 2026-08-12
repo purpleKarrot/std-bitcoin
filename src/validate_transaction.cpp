@@ -21,7 +21,7 @@ validation_status verifier::verify(bitcoin::transaction const& tx) const
   auto txn = legacy::convert_tx(tx);
   auto state = TxValidationState{};
   auto ok = CheckTransaction(txn, state);
-  return ok ? 0 : -1; // state.GetResult();
+  return ok ? validation_status{} : state.GetRejectReason();
 }
 
 // validation_status verify(

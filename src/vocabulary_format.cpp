@@ -5,6 +5,8 @@ module;
 #include <format>
 #include <string_view>
 
+#include "primitives/block.h"
+
 module bitcoin;
 import legacy;
 
@@ -37,6 +39,14 @@ auto std::formatter<bitcoin::transaction>::format(
   -> std::format_context::iterator
 {
   auto str = legacy::convert_tx(obj).ToString();
+  return std::formatter<string_view>::format(str, ctx);
+}
+
+auto std::formatter<bitcoin::block_header>::format(
+  bitcoin::block_header const& obj, std::format_context& ctx) const
+  -> std::format_context::iterator
+{
+  auto str = CBlock(legacy::convert_header(obj)).ToString();
   return std::formatter<string_view>::format(str, ctx);
 }
 
