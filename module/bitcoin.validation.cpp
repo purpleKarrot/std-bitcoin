@@ -1,14 +1,8 @@
 // SPDX-License-Identifier: BSL-1.0
 
-module;
-
-#include <chrono>
-#include <cstdint>
-#include <format>
-#include <type_traits>
-
 export module bitcoin:validation;
 
+import std;
 import :concepts;
 import :consensus_parameters;
 import :type_erasure;

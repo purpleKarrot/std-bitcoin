@@ -2,16 +2,12 @@
 
 module;
 
-#include <chrono>
-#include <format>
-#include <string_view>
-#include <vector>
-
 #include <beman/any_view/any_view.hpp>
 #include <beman/any_view/any_view_options.hpp>
 
 export module bitcoin:vocabulary;
 
+import std;
 import :amount;
 import :hash_id;
 import :script;

@@ -1,7 +1,10 @@
 # SPDX-License-Identifier: BSL-1.0
 
-cmake_minimum_required(VERSION 4.3)
+cmake_minimum_required(VERSION 4.4)
 project(StdBitcoin)
+
+set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include(FetchContent)
 
@@ -36,7 +39,7 @@ FetchContent_Declare(beman.any_view SYSTEM EXCLUDE_FROM_ALL
   URL https://github.com/bemanproject/any_view/archive/refs/tags/v1.1.0.tar.gz
   )
 
-set(MP_UNITS_BUILD_CXX_MODULES OFF CACHE BOOL "" FORCE)
+set(MP_UNITS_BUILD_CXX_MODULES ON CACHE BOOL "" FORCE)
 set(MP_UNITS_BUILD_INSTALL OFF CACHE BOOL "" FORCE)
 set(MP_UNITS_API_STD_FORMAT ON CACHE BOOL "" FORCE)
 set(MP_UNITS_API_CONTRACTS NONE CACHE STRING "" FORCE)

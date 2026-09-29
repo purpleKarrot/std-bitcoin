@@ -2,17 +2,11 @@
 
 module;
 
-#include <atomic>
 #include <cassert>
-#include <compare>
-#include <cstddef>
-#include <functional>
-#include <memory>
-#include <memory_resource>
-#include <type_traits>
-#include <utility>
 
 export module copy_on_write;
+
+import std;
 
 export namespace xyz {
 
@@ -237,10 +231,8 @@ public:
   ~copy_on_write()
   {
     assert(valueless_after_move() || _self->count > 0);
-    if (_self
-        != nullptr
-        && _self->count.fetch_sub(1, std::memory_order_release)
-        == 1) {
+    if ((_self != nullptr)
+        && (_self->count.fetch_sub(1, std::memory_order_release) == 1)) {
       std::atomic_thread_fence(std::memory_order_acquire);
       _destroy_model(_alloc, _self);
     }
@@ -262,8 +254,7 @@ public:
     }
     else if (pocca
              || alloc_traits::is_always_equal::value
-             || _alloc
-             == x._alloc) {
+             || (_alloc == x._alloc)) {
       x._self->count.fetch_add(1, std::memory_order_relaxed);
       _reset(x._self);
     }
@@ -441,10 +432,8 @@ private:
 
   void _reset(model* v)
   {
-    if (_self
-        != nullptr
-        && _self->count.fetch_sub(1, std::memory_order_release)
-        == 1) {
+    if ((_self != nullptr)
+        && (_self->count.fetch_sub(1, std::memory_order_release) == 1)) {
       std::atomic_thread_fence(std::memory_order_acquire);
       _destroy_model(_alloc, _self);
     }

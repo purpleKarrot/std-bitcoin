@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: BSL-1.0
 
 import bitcoin;
-
-#include <format>
+import std;
 
 #include <doctest/doctest.h>
 

@@ -2,12 +2,11 @@
 
 module;
 
-#include <ranges>
-
 #include "validation.h"
 
 module bitcoin;
 import legacy;
+import std;
 
 namespace bitcoin {
 

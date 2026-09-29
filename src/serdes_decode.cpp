@@ -1,22 +1,9 @@
 // SPDX-License-Identifier: BSL-1.0
 
-module;
-
-#include <algorithm>
-#include <bit>
-#include <chrono>
-#include <concepts>
-#include <cstddef>
-#include <cstdint>
-#include <cstring>
-#include <memory>
-#include <span>
-#include <type_traits>
-#include <vector>
-
-#include <mp-units/framework.h>
-
 module bitcoin;
+
+import std;
+import mp_units;
 
 namespace bitcoin {
 namespace {

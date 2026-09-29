@@ -2,13 +2,11 @@
 
 module;
 
-#include <format>
-#include <string_view>
-
 #include "primitives/block.h"
 
 module bitcoin;
 import legacy;
+import std;
 
 auto std::formatter<bitcoin::outpoint>::format(bitcoin::outpoint const& obj,
                                                std::format_context& ctx) const

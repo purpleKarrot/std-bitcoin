@@ -1,17 +1,8 @@
 // SPDX-License-Identifier: BSL-1.0
 
-module;
-
-#include <algorithm>
-#include <array>
-#include <concepts>
-#include <cstddef>
-#include <format>
-#include <functional>
-#include <span>
-#include <string_view>
-
 export module bitcoin:hash_id;
+
+import std;
 
 namespace bitcoin {
 

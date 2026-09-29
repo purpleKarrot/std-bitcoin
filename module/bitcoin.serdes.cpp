@@ -1,14 +1,8 @@
 // SPDX-License-Identifier: BSL-1.0
 
-module;
-
-#include <concepts>
-#include <cstddef>
-#include <memory>
-#include <optional>
-#include <span>
-
 export module bitcoin:serdes;
+
+import std;
 import :vocabulary;
 
 namespace bitcoin::serdes {

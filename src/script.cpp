@@ -3,13 +3,10 @@
 module;
 
 #include <cassert>
-#include <cstddef>
-#include <cstdint>
-#include <optional>
-#include <span>
-#include <vector>
 
 module bitcoin;
+
+import std;
 
 namespace bitcoin {
 namespace {

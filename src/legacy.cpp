@@ -2,8 +2,6 @@
 
 module;
 
-#include <ranges>
-
 #include "consensus/params.h"
 #include "primitives/block.h"
 #include "primitives/transaction.h"
@@ -11,6 +9,7 @@ module;
 export module legacy;
 
 import bitcoin;
+import std;
 
 export namespace legacy {
 

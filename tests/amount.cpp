@@ -1,13 +1,10 @@
 // SPDX-License-Identifier: BSL-1.0
 
 import bitcoin;
-
-#include <compare>
-#include <format>
-#include <type_traits>
+import mp_units;
+import std;
 
 #include <doctest/doctest.h>
-#include <mp-units/framework.h>
 
 using bitcoin::amount;
 using bitcoin::units::btc;

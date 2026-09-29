@@ -1,12 +1,8 @@
 // SPDX-License-Identifier: BSL-1.0
 
-module;
-
-#include <concepts>
-#include <ranges>
-
 export module bitcoin:concepts;
 
+import std;
 import :customization_points;
 import :vocabulary;
 

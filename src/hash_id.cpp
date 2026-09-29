@@ -1,15 +1,8 @@
 // SPDX-License-Identifier: BSL-1.0
 
-module;
-
-#include <array>
-#include <cstddef>
-#include <format>
-#include <ranges>
-#include <span>
-#include <string_view>
-
 module bitcoin;
+
+import std;
 
 auto bitcoin::format_hash_id(
   std::span<std::byte const, 32> bytes,

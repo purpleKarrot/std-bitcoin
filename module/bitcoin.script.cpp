@@ -2,20 +2,11 @@
 
 module;
 
-#include <algorithm>
 #include <cassert>
-#include <cstddef>
-#include <cstdint>
-#include <format>
-#include <iterator>
-#include <limits>
-#include <optional>
-#include <ranges>
-#include <span>
-#include <string_view>
-#include <vector>
 
 export module bitcoin:script;
+
+import std;
 
 export namespace bitcoin {
 

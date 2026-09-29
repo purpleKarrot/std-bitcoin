@@ -2,14 +2,11 @@
 
 module;
 
-#include <bit>
-#include <cstring>
-#include <ranges>
-#include <span>
-
 #include "hash.h"
 
 module bitcoin;
+
+import std;
 
 namespace bitcoin {
 namespace {

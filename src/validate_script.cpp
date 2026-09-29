@@ -2,9 +2,6 @@
 
 module;
 
-#include <ranges>
-#include <stdexcept>
-
 #include "consensus/tx_check.h"
 #include "primitives/transaction.h"
 #include "script/interpreter.h"
@@ -13,6 +10,7 @@ module;
 
 module bitcoin;
 import legacy;
+import std;
 
 namespace {
 
