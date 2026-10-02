@@ -9,9 +9,8 @@ import :vocabulary;
 export namespace bitcoin {
 
 template <typename T>
-concept chain_view = std::ranges::view<T>
+concept chain = std::ranges::random_access_range<T>
   && std::ranges::sized_range<T>
-  && std::ranges::random_access_range<T>
   && std::convertible_to<std::ranges::range_reference_t<T>, block_header>;
 
 template <typename T>

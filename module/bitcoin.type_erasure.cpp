@@ -21,10 +21,10 @@ template <typename T>
 using any_sized_random_access_view =
   beman::any_view::any_view<T const, sized_random_access>;
 
-using any_chain_view = any_sized_random_access_view<block_header>;
-using any_prevouts_view = any_sized_random_access_view<tx_output>;
+using any_chain = any_sized_random_access_view<block_header>;
+using any_prevouts = any_sized_random_access_view<tx_output>;
 
-static_assert(chain_view<any_chain_view>);
+static_assert(chain<any_chain>);
 
 class coin_t
 {

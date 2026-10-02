@@ -58,10 +58,10 @@ It defines a `verifier` function object that checks `block_header`,
 `transaction`, and `block` objects, as well as forward ranges of blocks, and
 returns ordinary values for both successful and unsuccessful validation. The
 overload set makes required validation evidence explicit: some overloads need
-only the candidate object, while others additionally accept a `chain_view`, the
+only the candidate object, while others additionally accept a `chain`, the
 current time, or a `coin_index`.
 
-To support this interface, the paper specifies the `chain_view`, `coin`, and
+To support this interface, the paper specifies the `chain`, `coin`, and
 `coin_index` concepts, the result type `validation_status`, the
 network-parameter aggregate `consensus_parameters`, and predefined `verify`
 objects for the standard Bitcoin networks.
@@ -81,7 +81,7 @@ validation results, while leaving node architecture and storage choices outside
 the specification.
 
 The proposal separates the *interface* of validation from the complete
-definition of Bitcoin consensus. It standardizes the `chain_view`, `coin`, and
+definition of Bitcoin consensus. It standardizes the `chain`, `coin`, and
 `coin_index` abstractions and validation outcomes, together with overloads that
 make progressively richer evidence explicit in the function signature. The
 public interface uses protocol vocabulary types from [@VOCABULARY] and
@@ -117,7 +117,7 @@ rules evaluated by overloads with fewer parameters.
 
 Validation code needs access to chain and UTXO evidence supplied by
 implementation-specific storage layers. The standardized interface therefore
-expresses those dependencies as the concepts `chain_view` and `coin_index`, and
+expresses those dependencies as the concepts `chain` and `coin_index`, and
 the overloads of `verifier::operator()` that take evidence parameters are
 constrained member function templates. This keeps the public API concept-based
 while still allowing implementations to adapt those arguments to private,
@@ -227,19 +227,17 @@ backing storage must remain valid while that reference is used. Additional
 lifetime requirements when a coin is supplied through `coin_index` are specified
 in [bitcoin.validation.coinindex].
 
-### [bitcoin.validation.chain] Concept `chain_view`
+### [bitcoin.validation.chain] Concept `chain`
 
-A type `T` models `chain_view` if and only if:
+A type `T` models `chain` if and only if:
 
-- `T` models `std::ranges::view`;
-- `T` models `std::ranges::sized_range` and
-  `std::ranges::random_access_range`;
+- `T` models `std::ranges::random_access_range` and `std::ranges::sized_range`;
 - `std::ranges::range_reference_t<T>` is convertible to
   `bitcoin::block_header`; and
-- concurrent observation of the same view and traversal using distinct iterator
+- concurrent observation of the same range and traversal using distinct iterator
   objects do not introduce data races or change the represented header sequence.
 
-A `chain_view` represents the sequence of block headers on the path from the
+A `chain` represents the sequence of block headers on the path from the
 genesis block to a particular tip. The concurrent-access requirement also applies
 to any internal caching performed by its observation and traversal operations.
 
@@ -247,8 +245,7 @@ to any internal caching performed by its observation and traversal operations.
 namespace bitcoin {
 
   template<class T>
-  concept chain_view =
-    std::ranges::view<T> &&
+  concept chain =
     std::ranges::sized_range<T> &&
     std::ranges::random_access_range<T> &&
     std::convertible_to<std::ranges::range_reference_t<T>,
@@ -425,9 +422,9 @@ namespace bitcoin {
       operator()(const block_header& h) const;
 
     template<class Chain>
-      requires chain_view<std::remove_cvref_t<Chain>>
+      requires bitcoin::chain<Chain const>
     [[nodiscard]] validation_status
-      operator()(const block_header& h, Chain&& chain,
+      operator()(const block_header& h, Chain const& chain,
                  std::chrono::sys_seconds now) const;
 
     // --- Block ---
@@ -436,16 +433,16 @@ namespace bitcoin {
       operator()(const block& b) const;
 
     template<class Chain>
-      requires chain_view<std::remove_cvref_t<Chain>>
+      requires bitcoin::chain<Chain const>
     [[nodiscard]] validation_status
-      operator()(const block& b, Chain&& chain,
+      operator()(const block& b, Chain const& chain,
                  std::chrono::sys_seconds now) const;
 
     template<class Chain, class Coins>
-      requires chain_view<std::remove_cvref_t<Chain>> &&
+      requires bitcoin::chain<Chain const> &&
                coin_index<std::remove_cvref_t<Coins>>
     [[nodiscard]] validation_status
-      operator()(const block& b, Chain&& chain,
+      operator()(const block& b, Chain const& chain,
                  std::chrono::sys_seconds now,
                  const Coins& coins) const;
 
@@ -455,10 +452,10 @@ namespace bitcoin {
       requires std::same_as<std::ranges::range_value_t<Blocks>, block> &&
                std::convertible_to<std::ranges::range_reference_t<Blocks>,
                                    block> &&
-               chain_view<std::remove_cvref_t<Chain>> &&
+               bitcoin::chain<Chain const> &&
                coin_index<std::remove_cvref_t<Coins>>
     [[nodiscard]] validation_status
-      operator()(Blocks&& blocks, Chain&& chain,
+      operator()(Blocks&& blocks, Chain const& chain,
                  std::chrono::sys_seconds now,
                  const Coins& coins) const;
 
@@ -468,15 +465,15 @@ namespace bitcoin {
       operator()(const transaction& tx) const;
 
     template<class Chain>
-      requires chain_view<std::remove_cvref_t<Chain>>
+      requires bitcoin::chain<Chain const>
     [[nodiscard]] validation_status
-      operator()(const transaction& tx, Chain&& chain) const;
+      operator()(const transaction& tx, Chain const& chain) const;
 
     template<class Chain, class Coins>
-      requires chain_view<std::remove_cvref_t<Chain>> &&
+      requires bitcoin::chain<Chain const> &&
                coin_index<std::remove_cvref_t<Coins>>
     [[nodiscard]] validation_status
-      operator()(const transaction& tx, Chain&& chain,
+      operator()(const transaction& tx, Chain const& chain,
                  const Coins& coins) const;
 
   private:
@@ -499,7 +496,7 @@ verification outcome.
 
 The overloads of `verifier::operator()` that take evidence parameters are
 constrained member function templates. Chain evidence is accepted as any type
-that models `chain_view` ([bitcoin.validation.chain]); UTXO evidence is accepted
+that models `chain` ([bitcoin.validation.chain]); UTXO evidence is accepted
 as any type that models `coin_index` ([bitcoin.validation.coinindex]). The
 standardized interface does not expose or specify any type-erased adaptation
 mechanism.
@@ -539,13 +536,13 @@ header consensus rules; otherwise a failing `validation_status`.
 *Remarks:* This overload evaluates only rules that can be checked against `h`
 alone. It does not compare `h` against any ancestor chain.
 
-#### [bitcoin.validation.verifier.header.chain_time] `template<class Chain> operator()(const block_header&, Chain&&, sys_seconds)`
+#### [bitcoin.validation.verifier.header.chain_time] `template<class Chain> operator()(const block_header&, Chain const&, sys_seconds)`
 
 ```cpp
 template<class Chain>
-  requires chain_view<std::remove_cvref_t<Chain>>
+  requires bitcoin::chain<Chain const>
 [[nodiscard]] validation_status
-  operator()(const block_header& h, Chain&& chain,
+  operator()(const block_header& h, Chain const& chain,
              std::chrono::sys_seconds now) const;
 ```
 
@@ -567,13 +564,13 @@ chain and the current time.
 *Returns:* A successful `validation_status` if `b` satisfies all intrinsic block
 consensus rules; otherwise a failing `validation_status`.
 
-#### [bitcoin.validation.verifier.block.chain_time] `template<class Chain> operator()(const block&, Chain&&, sys_seconds)`
+#### [bitcoin.validation.verifier.block.chain_time] `template<class Chain> operator()(const block&, Chain const&, sys_seconds)`
 
 ```cpp
 template<class Chain>
-  requires chain_view<std::remove_cvref_t<Chain>>
+  requires bitcoin::chain<Chain const>
 [[nodiscard]] validation_status
-  operator()(const block& b, Chain&& chain,
+  operator()(const block& b, Chain const& chain,
              std::chrono::sys_seconds now) const;
 ```
 
@@ -585,14 +582,14 @@ consensus rules evaluated by this overload; otherwise a failing
 `operator()(const block&)`, incorporating rules that require the ancestor chain
 and the current time.
 
-#### [bitcoin.validation.verifier.block.chain_time_coins] `template<class Chain, class Coins> operator()(const block&, Chain&&, sys_seconds, Coins&&)`
+#### [bitcoin.validation.verifier.block.chain_time_coins] `template<class Chain, class Coins> operator()(const block&, Chain const&, sys_seconds, Coins&&)`
 
 ```cpp
 template<class Chain, class Coins>
-  requires chain_view<std::remove_cvref_t<Chain>> &&
+  requires bitcoin::chain<Chain const> &&
            coin_index<std::remove_cvref_t<Coins>>
 [[nodiscard]] validation_status
-  operator()(const block& b, Chain&& chain,
+  operator()(const block& b, Chain const& chain,
              std::chrono::sys_seconds now,
              Coins&& coins) const;
 ```
@@ -616,16 +613,16 @@ internally; lookup continues to report membership in the initial snapshot.
 Missing inputs and double spends in the candidate block are unsuccessful
 validation outcomes.
 
-#### [bitcoin.validation.verifier.blocks.chain_time_coins] `template<class Blocks, class Chain, class Coins> operator()(Blocks&&, Chain&&, sys_seconds, const Coins&)`
+#### [bitcoin.validation.verifier.blocks.chain_time_coins] `template<class Blocks, class Chain, class Coins> operator()(Blocks&&, Chain const&, sys_seconds, const Coins&)`
 
 ```cpp
 template<std::ranges::forward_range Blocks, class Chain, class Coins>
   requires std::same_as<std::ranges::range_value_t<Blocks>, block> &&
            std::convertible_to<std::ranges::range_reference_t<Blocks>, block> &&
-           chain_view<std::remove_cvref_t<Chain>> &&
+           bitcoin::chain<Chain const> &&
            coin_index<std::remove_cvref_t<Coins>>
 [[nodiscard]] validation_status
-  operator()(Blocks&& blocks, Chain&& chain,
+  operator()(Blocks&& blocks, Chain const& chain,
              std::chrono::sys_seconds now,
              const Coins& coins) const;
 ```
@@ -698,13 +695,13 @@ beyond that point.
 *Returns:* A successful `validation_status` if `tx` satisfies all intrinsic
 transaction consensus rules; otherwise a failing `validation_status`.
 
-#### [bitcoin.validation.verifier.tx.chain] `template<class Chain> operator()(const transaction&, Chain&&)`
+#### [bitcoin.validation.verifier.tx.chain] `template<class Chain> operator()(const transaction&, Chain const&)`
 
 ```cpp
 template<class Chain>
-  requires chain_view<std::remove_cvref_t<Chain>>
+  requires bitcoin::chain<Chain const>
 [[nodiscard]] validation_status
-  operator()(const transaction& tx, Chain&& chain) const;
+  operator()(const transaction& tx, Chain const& chain) const;
 ```
 
 *Returns:* A successful `validation_status` if `tx` satisfies all transaction
@@ -715,14 +712,14 @@ consensus rules evaluated by this overload; otherwise a failing
 `operator()(const transaction&)`, incorporating rules that require chain
 context.
 
-#### [bitcoin.validation.verifier.tx.chain_coins] `template<class Chain, class Coins> operator()(const transaction&, Chain&&, Coins&&)`
+#### [bitcoin.validation.verifier.tx.chain_coins] `template<class Chain, class Coins> operator()(const transaction&, Chain const&, Coins&&)`
 
 ```cpp
 template<class Chain, class Coins>
-  requires chain_view<std::remove_cvref_t<Chain>> &&
+  requires bitcoin::chain<Chain const> &&
            coin_index<std::remove_cvref_t<Coins>>
 [[nodiscard]] validation_status
-  operator()(const transaction& tx, Chain&& chain,
+  operator()(const transaction& tx, Chain const& chain,
              Coins&& coins) const;
 ```
 

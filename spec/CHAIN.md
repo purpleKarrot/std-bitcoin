@@ -24,10 +24,10 @@ not under active consideration for standardization.]{.draftnote}
 
 This paper is retired.
 
-The public `chain_view` abstraction is now specified in [@VALIDATION]. The
+The public `chain` abstraction is now specified in [@VALIDATION]. The
 previous proposal to standardize a public type-erased wrapper
 `bitcoin::any_chain_view` has been withdrawn.
 
-Implementations may still adapt `chain_view` arguments to private non-owning,
+Implementations may still adapt `chain` arguments to private non-owning,
 type-erased representations internally, but that mechanism is an implementation
 detail and is not part of the standardized API.

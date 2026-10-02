@@ -69,7 +69,7 @@ target_link_libraries(stdbtc
 FetchContent_GetProperties(BitcoinCore SOURCE_DIR BitcoinCore_SOURCE_DIR)
 target_include_directories(stdbtc PRIVATE
   ${BitcoinCore_SOURCE_DIR}/src
-  /opt/homebrew/Cellar/boost/1.90.0_1/include/
+  /opt/homebrew/opt/boost/include
   )
 
 target_sources(stdbtc
@@ -102,9 +102,9 @@ target_sources(stdbtc
     src/vocabulary_format.cpp
   )
 
-set_target_properties(stdbtc PROPERTIES
-  CXX_CLANG_TIDY "clang-tidy"
-  )
+# set_target_properties(stdbtc PROPERTIES
+#   CXX_CLANG_TIDY "clang-tidy"
+#   )
 
 set_source_files_properties(
     src/validate_block.cpp

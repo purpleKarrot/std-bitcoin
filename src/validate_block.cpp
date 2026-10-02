@@ -23,7 +23,7 @@ validation_status verifier::verify(bitcoin::block const& b) const
 }
 
 validation_status verifier::verify(bitcoin::block const& b,
-                                   type_erasure::any_chain_view chain, // NOLINT
+                                   type_erasure::any_chain chain, // NOLINT
                                    std::chrono::sys_seconds now) const
 {
   if (auto status = verify(b.header(), chain, now); !status) {
@@ -38,7 +38,7 @@ validation_status verifier::verify(bitcoin::block const& b,
 }
 
 validation_status verifier::verify(bitcoin::block const& b,
-                                   type_erasure::any_chain_view chain, // NOLINT
+                                   type_erasure::any_chain chain, // NOLINT
                                    std::chrono::sys_seconds now,
                                    type_erasure::coin_index_ref coins) const
 {

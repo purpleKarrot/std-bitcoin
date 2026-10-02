@@ -19,7 +19,7 @@ validation_status verifier::verify(block_header const& header) const
 }
 
 validation_status verifier::verify(block_header const& header,
-                                   type_erasure::any_chain_view chain,
+                                   type_erasure::any_chain chain,
                                    std::chrono::sys_seconds now) const
 {
   // if (auto status = verify(header); !status.ok()) {

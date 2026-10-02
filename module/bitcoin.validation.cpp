@@ -77,11 +77,11 @@ public:
   }
 
   template <typename Chain>
-    requires chain_view<std::remove_cvref_t<Chain>>
-  [[nodiscard]] auto operator()(block_header const& h, Chain&& chain,
+    requires bitcoin::chain<Chain const>
+  [[nodiscard]] auto operator()(block_header const& h, Chain const& chain,
                                 std::chrono::sys_seconds now) const
   {
-    return verify(h, std::forward<Chain>(chain), now);
+    return verify(h, std::ranges::ref_view{chain}, now);
   }
 
   //
@@ -91,21 +91,21 @@ public:
   [[nodiscard]] auto operator()(block const& b) const { return verify(b); }
 
   template <typename Chain>
-    requires chain_view<std::remove_cvref_t<Chain>>
-  [[nodiscard]] auto operator()(block const& b, Chain&& chain,
+    requires bitcoin::chain<Chain const>
+  [[nodiscard]] auto operator()(block const& b, Chain const& chain,
                                 std::chrono::sys_seconds now) const
   {
-    return verify(b, std::forward<Chain>(chain), now);
+    return verify(b, std::ranges::ref_view{chain}, now);
   }
 
   template <typename Chain, typename Coins>
-    requires chain_view<std::remove_cvref_t<Chain>>
+    requires bitcoin::chain<Chain const>
     && coin_index<std::remove_cvref_t<Coins>>
-  [[nodiscard]] auto operator()(block const& b, Chain&& chain,
+  [[nodiscard]] auto operator()(block const& b, Chain const& chain,
                                 std::chrono::sys_seconds now,
                                 Coins&& coins) const
   {
-    return verify(b, std::forward<Chain>(chain), now,
+    return verify(b, std::ranges::ref_view{chain}, now,
                   std::forward<Coins>(coins));
   }
 
@@ -119,19 +119,19 @@ public:
   }
 
   template <typename Chain>
-    requires chain_view<std::remove_cvref_t<Chain>>
-  [[nodiscard]] auto operator()(transaction const& tx, Chain&& chain) const
+    requires bitcoin::chain<Chain const>
+  [[nodiscard]] auto operator()(transaction const& tx, Chain const& chain) const
   {
-    return verify(tx, std::forward<Chain>(chain));
+    return verify(tx, std::ranges::ref_view{chain});
   }
 
   template <typename Chain, typename Coins>
-    requires chain_view<std::remove_cvref_t<Chain>>
+    requires bitcoin::chain<Chain const>
     && coin_index<std::remove_cvref_t<Coins>>
-  [[nodiscard]] auto operator()(transaction const& tx, Chain&& chain,
+  [[nodiscard]] auto operator()(transaction const& tx, Chain const& chain,
                                 Coins&& coins) const
   {
-    return verify(tx, std::forward<Chain>(chain), std::forward<Coins>(coins));
+    return verify(tx, std::ranges::ref_view{chain}, std::forward<Coins>(coins));
   }
 
   //
@@ -162,7 +162,7 @@ private:
 
   [[nodiscard]] validation_status verify(block_header const& header) const;
   [[nodiscard]] validation_status verify(block_header const& header,
-                                         type_erasure::any_chain_view chain,
+                                         type_erasure::any_chain chain,
                                          std::chrono::sys_seconds now) const;
 
   //
@@ -171,10 +171,10 @@ private:
 
   [[nodiscard]] validation_status verify(bitcoin::block const& block) const;
   [[nodiscard]] validation_status verify(bitcoin::block const& block,
-                                         type_erasure::any_chain_view chain,
+                                         type_erasure::any_chain chain,
                                          std::chrono::sys_seconds now) const;
   [[nodiscard]] validation_status verify(
-    bitcoin::block const& block, type_erasure::any_chain_view chain,
+    bitcoin::block const& block, type_erasure::any_chain chain,
     std::chrono::sys_seconds now, type_erasure::coin_index_ref coins) const;
 
   //
@@ -182,8 +182,8 @@ private:
   //
 
   [[nodiscard]] validation_status verify(bitcoin::transaction const& tx) const;
-  [[nodiscard]] validation_status verify(
-    bitcoin::transaction const& tx, type_erasure::any_chain_view chain) const;
+  [[nodiscard]] validation_status verify(bitcoin::transaction const& tx,
+                                         type_erasure::any_chain chain) const;
   // validation_status verify(bitcoin::transaction const& tx, chain,
   // coins)const;
 
@@ -194,7 +194,7 @@ private:
   [[nodiscard]] validation_status verify(
     script_ref script, amount value, transaction const& tx,
     std::size_t input_index, validation_flags flags,
-    type_erasure::any_prevouts_view prevouts) const;
+    type_erasure::any_prevouts prevouts) const;
 
   //
   // Parameters
