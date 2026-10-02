@@ -55,11 +55,11 @@ not under active consideration for standardization.]{.draftnote}
 This paper proposes a standard C++ interface for Bitcoin consensus validation.
 
 It defines a `verifier` function object that checks `block_header`,
-`transaction`, and `block` objects and returns ordinary values for both
-successful and unsuccessful validation. The overload set makes required
-validation evidence explicit: some overloads need only the candidate object,
-while others additionally accept a `chain_view`, the current time, or a
-`coin_index`.
+`transaction`, and `block` objects, as well as forward ranges of blocks, and
+returns ordinary values for both successful and unsuccessful validation. The
+overload set makes required validation evidence explicit: some overloads need
+only the candidate object, while others additionally accept a `chain_view`, the
+current time, or a `coin_index`.
 
 To support this interface, the paper specifies the `chain_view`, `coin`, and
 `coin_index` concepts, the result type `validation_status`, the
@@ -123,6 +123,28 @@ constrained member function templates. This keeps the public API concept-based
 while still allowing implementations to adapt those arguments to private,
 non-owning, type-erased representations internally. Any such type erasure is an
 implementation detail and is not part of the public API.
+
+## Validating a sequence of blocks
+
+A forward range of blocks gives an implementation access to an entire candidate
+chain segment. Multiple passes permit gathering outputs and chain context before
+checking transactions, while leaving the range's storage representation and the
+size of the segment to the application. The range need not be sized, random
+access, contiguous, or a view.
+
+Range order specifies consensus order, not execution order. The result is defined
+by connecting the blocks in that order, starting from the supplied ancestor chain
+and UTXO snapshot. An implementation may instead index outputs across the
+segment, precompute transaction data, perform script and signature checks in
+parallel, and aggregate spend-uniqueness checks. These strategies must preserve
+the same success or failure outcome, including input availability at the point
+of each spend and the rules applicable to each block.
+
+The range overload returns one `validation_status` for the entire segment. It
+does not require identifying the first invalid block or a maximal valid prefix.
+This permits aggregate checks that detect a violation without immediately
+locating it. No validation work or borrowed evidence remains outstanding when
+the call returns.
 
 ## Alignment with standard lookup interfaces
 
@@ -211,12 +233,15 @@ A type `T` models `chain_view` if and only if:
 
 - `T` models `std::ranges::view`;
 - `T` models `std::ranges::sized_range` and
-  `std::ranges::random_access_range`; and
+  `std::ranges::random_access_range`;
 - `std::ranges::range_reference_t<T>` is convertible to
-  `bitcoin::block_header`.
+  `bitcoin::block_header`; and
+- concurrent observation of the same view and traversal using distinct iterator
+  objects do not introduce data races or change the represented header sequence.
 
 A `chain_view` represents the sequence of block headers on the path from the
-genesis block to a particular tip.
+genesis block to a particular tip. The concurrent-access requirement also applies
+to any internal caching performed by its observation and traversal operations.
 
 ```cpp
 namespace bitcoin {
@@ -385,7 +410,7 @@ validation.\]{.ednote}
 
 `verifier` is a lightweight function object that holds a non-owning pointer to a
 `consensus_parameters` instance and evaluates Bitcoin consensus rules for
-`block_header`, `transaction`, and `block` objects.
+`block_header`, `transaction`, and `block` objects and forward ranges of blocks.
 
 ```cpp
 namespace bitcoin {
@@ -421,6 +446,19 @@ namespace bitcoin {
                coin_index<std::remove_cvref_t<Coins>>
     [[nodiscard]] validation_status
       operator()(const block& b, Chain&& chain,
+                 std::chrono::sys_seconds now,
+                 const Coins& coins) const;
+
+    // --- Sequence of blocks ---
+
+    template<std::ranges::forward_range Blocks, class Chain, class Coins>
+      requires std::same_as<std::ranges::range_value_t<Blocks>, block> &&
+               std::convertible_to<std::ranges::range_reference_t<Blocks>,
+                                   block> &&
+               chain_view<std::remove_cvref_t<Chain>> &&
+               coin_index<std::remove_cvref_t<Coins>>
+    [[nodiscard]] validation_status
+      operator()(Blocks&& blocks, Chain&& chain,
                  std::chrono::sys_seconds now,
                  const Coins& coins) const;
 
@@ -475,7 +513,8 @@ consensus rules is outside the scope of this paper.
 `verifier` is a non-owning reference to its `consensus_parameters`. The caller
 is responsible for ensuring that the `consensus_parameters` object outlives the
 `verifier`. Evidence arguments passed to `operator()` are borrowed only for the
-duration of the call.
+duration of the call. The candidate range and its elements are likewise borrowed
+only for the duration of a range validation call.
 
 #### [bitcoin.validation.verifier.cons] Constructor
 
@@ -576,6 +615,78 @@ by `coins`. The verifier resolves outputs created within `b` and tracks spends
 internally; lookup continues to report membership in the initial snapshot.
 Missing inputs and double spends in the candidate block are unsuccessful
 validation outcomes.
+
+#### [bitcoin.validation.verifier.blocks.chain_time_coins] `template<class Blocks, class Chain, class Coins> operator()(Blocks&&, Chain&&, sys_seconds, const Coins&)`
+
+```cpp
+template<std::ranges::forward_range Blocks, class Chain, class Coins>
+  requires std::same_as<std::ranges::range_value_t<Blocks>, block> &&
+           std::convertible_to<std::ranges::range_reference_t<Blocks>, block> &&
+           chain_view<std::remove_cvref_t<Chain>> &&
+           coin_index<std::remove_cvref_t<Coins>>
+[[nodiscard]] validation_status
+  operator()(Blocks&& blocks, Chain&& chain,
+             std::chrono::sys_seconds now,
+             const Coins& coins) const;
+```
+
+*Preconditions:* `chain` represents an already validated ancestor chain and
+`coins` represents its UTXO state, before processing any candidate block. If
+`chain` is empty, `coins` represents the empty UTXO state preceding the genesis
+block. The evidence meets the snapshot and lifetime requirements in
+[bitcoin.validation.coinindex]. The candidate range remains valid and yields
+the same sequence of block values on repeated traversal for the duration of the
+call. Concurrent observation of `blocks`, traversal using distinct iterator
+objects, and observation of the yielded blocks and their transaction, script,
+and witness data do not introduce data races or change the candidate values.
+This requirement also applies to any internal caching performed by those
+operations. Concurrent access to `chain` meets the requirements in
+[bitcoin.validation.chain].
+
+*Returns:* A successful `validation_status` if the entire sequence can be
+connected to `chain`, starting from the UTXO state represented by `coins`, under
+the block consensus rules evaluated by the single-block overload accepting chain,
+time, and UTXO evidence; otherwise a failing `validation_status`. An empty range
+returns a successful `validation_status`.
+
+For determining this outcome, blocks are considered in range order and
+transactions within each block in transaction order. Each block is evaluated
+against `chain` extended by the preceding candidate headers, using the UTXO state
+resulting from the preceding candidate blocks and transactions. The supplied
+`now` is used for every candidate block. Heights, median times, difficulty, and
+activation-dependent rules are determined in the context of each candidate
+block, not solely from the initial ancestor tip.
+
+*Remarks:* Candidate linkage is checked by the verifier. A first block that does
+not extend the supplied ancestor chain, or a later block that does not extend
+its predecessor in the range, produces unsuccessful validation. With an empty
+ancestor chain, the first candidate must be the network's genesis block.
+
+The verifier resolves outputs created within the segment and accounts for
+spends according to consensus order without changing the UTXO state represented
+by `coins`. Lookup continues to report membership in the initial snapshot.
+Missing inputs, references to outputs that do not yet exist at the point of
+spending, and double spends within or across candidate blocks produce
+unsuccessful validation. Output resolution and spend accounting shall preserve
+the applicable consensus rules for duplicate transaction identifiers and
+historical exceptions; an outpoint is not assumed to identify only one output
+occurrence over the entire history.
+
+The implementation may traverse `blocks` multiple times and reorder, combine,
+or execute validation computations concurrently, provided that the returned
+success or failure is unchanged. This includes collecting output evidence before
+its creating block has been fully validated and deferring spend-uniqueness checks
+until other checks have completed. Successful validation shall not be reported
+until all checks required to establish the outcome have completed. The
+implementation may read `blocks`, its yielded block data, and `chain`
+concurrently under their concurrent-access requirements.
+
+The failure condition reported is implementation-defined. A failure status does
+not certify any prefix of the range, and the implementation is not required to
+identify the first invalid block. All validation work initiated by the call
+shall have completed before the call returns or propagates an exception; the
+implementation shall not retain borrowed arguments or references into them
+beyond that point.
 
 #### [bitcoin.validation.verifier.tx.intrinsic] `operator()(const transaction&)`
 
@@ -688,6 +799,14 @@ A program calls `verify` as if it were a function:
 auto status = bitcoin::verify(b, chain, now, coins);          // mainnet
 auto status = bitcoin::testnet::verify(b, chain, now, coins); // testnet
 auto status = bitcoin::regtest::verify(h);                    // regtest
+```
+
+A forward range can be validated with the same evidence interface:
+
+```cpp
+// blocks is a forward range of bitcoin::block values in candidate chain order.
+// chain and coins describe the validated state preceding the entire segment.
+auto status = bitcoin::verify(blocks, chain, now, coins);
 ```
 
 A program may also construct a `verifier` with custom `consensus_parameters` for
