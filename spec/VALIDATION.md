@@ -14,6 +14,10 @@ references:
     citation-label: VOCABULARY
     title: "Adding Bitcoin Vocabulary Types to the C++ Standard Library"
     URL: https://purplekarrot.github.io/std-bitcoin/VOCABULARY.html
+  - id: CPO
+    citation-label: CPO
+    title: "Bitcoin Customization Point Objects"
+    URL: https://purplekarrot.github.io/std-bitcoin/CPO.html
   - id: BIP34
     citation-label: BIP-34
     title: "BIP-34: Block v2, Height in Coinbase"
@@ -57,16 +61,16 @@ validation evidence explicit: some overloads need only the candidate object,
 while others additionally accept a `chain_view`, the current time, or a
 `coin_index`.
 
-To support this interface, the paper specifies the `chain_view` and `coin_index`
-abstractions, the vocabulary type `coin`, the result type `verification_status`,
-the network-parameter aggregate`consensus_parameters`, and predefined `verify`
+To support this interface, the paper specifies the `chain_view`, `coin`, and
+`coin_index` concepts, the result type `validation_status`, the
+network-parameter aggregate `consensus_parameters`, and predefined `verify`
 objects for the standard Bitcoin networks.
 
 The design keeps storage strategy, caching, and any type-erasure out of the
 public API. A failed verification is reported as a normal return value; true
 execution failures remain exceptional and propagate via exceptions.
 
-This paper depends on the companion paper [@VOCABULARY].
+This paper depends on the companion papers [@VOCABULARY] and [@CPO].
 
 # Motivation
 
@@ -77,11 +81,11 @@ validation results, while leaving node architecture and storage choices outside
 the specification.
 
 The proposal separates the *interface* of validation from the complete
-definition of Bitcoin consensus. It standardizes the `chain_view` and
-`coin_index` abstractions, the `coin` vocabulary type, validation outcomes,
-together with overloads that make progressively richer evidence explicit in the
-function signature. The public interface is expressed entirely in terms of
-vocabulary types from [@VOCABULARY].
+definition of Bitcoin consensus. It standardizes the `chain_view`, `coin`, and
+`coin_index` abstractions and validation outcomes, together with overloads that
+make progressively richer evidence explicit in the function signature. The
+public interface uses protocol vocabulary types from [@VOCABULARY] and
+observational customization point objects from [@CPO].
 
 # Impact on the Standard
 
@@ -122,14 +126,21 @@ implementation detail and is not part of the public API.
 
 ## Alignment with standard lookup interfaces
 
-The `coin_index` concept requires `lookup` to return
-`std::optional<const coin&>`. This follows the direction of the standard lookup
-proposals for C++29. [@P3091R5] provides the optional-reference lookup model,
-while [@P4139R2] argues for naming that operation `lookup` rather than `get`.
-This paper adopts the same name and can follow further standard library
-evolution if that naming direction changes. Under that design,
-`std::map<outpoint, coin>`, `std::unordered_map<outpoint, coin>`, and
-`std::flat_map<outpoint, coin>` become natural models of `coin_index`.
+The `coin_index` concept requires a `mapped_type` that models `coin` and a
+`lookup` result convertible to `std::optional<mapped_type>`. The mapped type is
+chosen by the evidence provider; this paper does not standardize a concrete
+coin class. Its required properties are queried through the customization
+point objects in [@CPO]. This permits stored values and lightweight handles
+without requiring a `tx_output` subobject or a particular storage layout.
+
+The name `lookup` follows the direction of the standard lookup proposals for
+C++29. [@P3091R5] provides the optional-reference lookup model, while [@P4139R2]
+argues for naming that operation `lookup` rather than `get`. An optional-reference
+result is also permitted when it is convertible to the required optional value
+and preserves the coin's observable properties. Under that design,
+`std::map<outpoint, C>`, `std::unordered_map<outpoint, C>`, and
+`std::flat_map<outpoint, C>` can model `coin_index` when `C` models `coin` and
+their lookup results meet the conversion requirement.
 
 That is valuable even if production nodes use custom UTXO data structures.
 Tests, examples, and small implementations can use standard containers directly,
@@ -139,7 +150,7 @@ architectures behind the same abstraction.
 # Proposed wording
 
 The wording in this section is relative to the C++ Working Draft and assumes
-that the wording of [@VOCABULARY] has been applied.
+that the wording of [@VOCABULARY] and [@CPO] has been applied.
 
 [Add the following declarations to the `<bitcoin>` header synopsis in
 [bitcoin.syn].]{.ednote}
@@ -152,44 +163,47 @@ that the wording of [@VOCABULARY] has been applied.
 
 ## [bitcoin.validation] Validation vocabulary and functions
 
-### [bitcoin.validation.coin] Vocabulary type `coin`
+### [bitcoin.validation.coin] Concept `coin`
 
-`coin` represents an unspent transaction output: the `tx_output` that was
-created by a prior transaction, together with the height at which that
-transaction was confirmed on the chain.
+The `coin` concept describes the evidence about a transaction output needed for
+validation: its value, locking script, funding height, and whether the funding
+transaction is coinbase. It does not require a particular representation or a
+public vocabulary class.
 
 ```cpp
 namespace bitcoin {
 
-  class coin {
-  public:
-    [[nodiscard]] const tx_output& output() const noexcept;
-    [[nodiscard]] std::size_t height() const noexcept;
-
-    friend bool operator==(const coin& lhs, const coin& rhs) noexcept;
-
-  private:
-    tx_output output_;   // exposition only
-    std::size_t height_; // exposition only
+  template<class T>
+  concept coin = requires (T const& c) {
+    { bitcoin::value(c) } -> std::convertible_to<amount>;
+    { bitcoin::output_script(c) } -> std::convertible_to<script_ref>;
+    { bitcoin::funding_height(c) } -> std::convertible_to<std::size_t>;
+    { bitcoin::is_coinbase(c) } -> std::convertible_to<bool>;
   };
 
 } // namespace bitcoin
 ```
 
-#### [bitcoin.validation.coin.obs] Observers
+A type `T` models `coin` only if it satisfies the concept and, for an object
+`c` representing a transaction output, the following semantic requirements
+hold after conversion to the respective required types:
 
-```cpp
-[[nodiscard]] const tx_output& output() const noexcept;
-```
+- `bitcoin::value(c)` is the amount of the represented output.
+- `bitcoin::output_script(c)` refers to the locking script of that output.
+- `bitcoin::funding_height(c)` is the height of the block containing the
+  transaction that created that output.
+- `bitcoin::is_coinbase(c)` is `true` if and only if that transaction is a
+  coinbase transaction.
 
-*Returns:* A reference to the transaction output represented by this coin.
+These operations are observational: they do not consume the represented output
+or change its properties. Repeated queries on unchanged evidence yield the
+same amount, script bytes, height, and coinbase provenance. Equality of coin
+objects is not required.
 
-```cpp
-[[nodiscard]] std::size_t height() const noexcept;
-```
-
-*Returns:* The height of the block in which the transaction that created this
-coin was confirmed.
+The `script_ref` obtained from `bitcoin::output_script(c)` is non-owning. Its
+backing storage must remain valid while that reference is used. Additional
+lifetime requirements when a coin is supplied through `coin_index` are specified
+in [bitcoin.validation.coinindex].
 
 ### [bitcoin.validation.chain] Concept `chain_view`
 
@@ -220,20 +234,57 @@ namespace bitcoin {
 
 ### [bitcoin.validation.coinindex] Concept `coin_index`
 
-A type `T` models `coin_index` if it provides a lookup from `outpoint` to
-`std::optional<const coin&>`. The concept places no constraints on storage,
-caching, persistence, or concurrency strategy.
+The `coin_index` concept describes a lookup from an `outpoint` to optional coin
+evidence. The provider's `mapped_type` models `coin`.
 
 ```cpp
 namespace bitcoin {
 
   template<class T>
-  concept coin_index = requires (T const& m, outpoint p) {
-    { m.lookup(p) } -> std::same_as<std::optional<const coin&>>;
-  };
+  concept coin_index =
+    coin<typename T::mapped_type> &&
+    requires (T const& m, outpoint const& p) {
+      { m.lookup(p) } ->
+        std::convertible_to<std::optional<typename T::mapped_type>>;
+    };
 
 } // namespace bitcoin
 ```
+
+A type `T` models `coin_index` only if it satisfies the concept and the
+following semantic requirements hold. Let `result` be the result of
+`m.lookup(p)` converted to `std::optional<typename T::mapped_type>`:
+
+- `result` is engaged if and only if `p` identifies an unspent output in the
+  UTXO state represented by `m`.
+- If engaged, `*result` represents that output and supplies its value, locking
+  script, funding height, and coinbase provenance as specified by `coin`.
+- Lookup does not spend, remove, or otherwise consume an output. Internal
+  caching is permitted provided that it does not change the represented UTXO
+  state or the observable coin evidence.
+- An empty result denotes absence from the represented UTXO state. An execution
+  failure, such as an I/O failure while retrieving evidence, shall not be
+  reported as an empty result; it may propagate as an exception.
+
+When supplied to `verifier::operator()`, the index represents a fixed UTXO
+snapshot for the duration of the call. Repeated lookups of the same outpoint
+shall agree on presence and, when present, on all four coin properties. The
+represented UTXO state and the backing storage of scripts obtained from it
+shall remain valid and unchanged until the call returns. In particular,
+destroying a temporary lookup result shall not invalidate script
+references obtained from that result during the call. This permits an
+implementation to retain the required properties in a private non-owning
+representation.
+
+Concurrent calls to `lookup` on the same index, including calls for the same
+outpoint, and concurrent observation of the returned coin evidence shall not
+introduce data races or alter the represented UTXO state or observable coin
+properties. This requirement also applies when lookup performs internal caching.
+
+The order and number of lookups performed by a verifier are unspecified. An
+implementation may invoke lookup and observe the returned coin evidence
+concurrently. Storage, caching, persistence, and synchronization strategies are
+otherwise unspecified.
 
 ### [bitcoin.validation.status] Class `validation_status`
 
@@ -507,6 +558,10 @@ template<class Chain, class Coins>
              Coins&& coins) const;
 ```
 
+*Preconditions:* `coins` represents the UTXO state at the tip of `chain`, before
+processing `b`, and meets the snapshot and lifetime requirements in
+[bitcoin.validation.coinindex].
+
 *Returns:* A successful `validation_status` if `b` satisfies all block
 consensus rules evaluated by this overload; otherwise a failing
 `validation_status`.
@@ -514,6 +569,13 @@ consensus rules evaluated by this overload; otherwise a failing
 *Remarks:* This overload evaluates a superset of the rules evaluated by the
 overload that accepts `b`, `chain`, and `now`, incorporating rules that require
 UTXO-set evidence via `coins`.
+
+The verifier accounts for outputs created and spent within `b` according to
+transaction order without applying those changes to the UTXO state represented
+by `coins`. The verifier resolves outputs created within `b` and tracks spends
+internally; lookup continues to report membership in the initial snapshot.
+Missing inputs and double spends in the candidate block are unsuccessful
+validation outcomes.
 
 #### [bitcoin.validation.verifier.tx.intrinsic] `operator()(const transaction&)`
 
@@ -553,6 +615,10 @@ template<class Chain, class Coins>
              Coins&& coins) const;
 ```
 
+*Preconditions:* `coins` represents the UTXO state at the tip of `chain`, before
+processing `tx`, and meets the snapshot and lifetime requirements in
+[bitcoin.validation.coinindex].
+
 *Returns:* A successful `validation_status` if `tx` satisfies all transaction
 consensus rules evaluated by this overload; otherwise a failing
 `validation_status`.
@@ -560,6 +626,10 @@ consensus rules evaluated by this overload; otherwise a failing
 *Remarks:* This overload evaluates a superset of the rules evaluated by the
 overload that accepts `tx` and `chain`, incorporating rules that require UTXO
 information via `coins`.
+
+Validation leaves the UTXO state represented by `coins` unchanged. Missing
+inputs and duplicate spends within the candidate transaction are unsuccessful
+validation outcomes.
 
 ### [bitcoin.validation.verify] Predefined `params` and `verify` objects
 
